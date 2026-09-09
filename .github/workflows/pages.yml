@@ -2,8 +2,7 @@ name: Deploy 争霸赛 to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -12,35 +11,37 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Inject pixel fighter layer
+      - name: Apply final spectator layout
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='<script src="pixel-model.js"></script>'
-          if marker not in s:
-              s=s.replace('</head>',marker+'</head>',1)
-          p.write_text(s,encoding='utf-8')
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{position:absolute;z-index:55;display:none;pointer-events:none;font-size:clamp(8px,1vw,12px);font-weight:800;color:#fff;text-shadow:1px 1px 0 #000,0 0 4px #000;white-space:nowrap;background:#0008;padding:1px 4px;border-radius:2px}.action-callout.on{display:block}'''
+          s=s.replace("</style>",css+"</style>",1) if 'final spectator layout' not in s else s
+          js='''<script>(function(){function boot(){var g=document.querySelector('.game'),fs=[].slice.call(document.querySelectorAll('.fighter'));if(!g||!fs.length)return;var names=['赤焰','疾风'];var boxes=fs.map(function(){var d=document.createElement('div');d.className='action-callout';g.appendChild(d);return d});var last=fs.map(function(){return ''});function update(){fs.forEach(function(f,i){var c=f.classList,act=c.contains('att')?'出拳':c.contains('att2')?'踢击':c.contains('guard')?'防御':c.contains('dodge')?'闪避':c.contains('jump')?'跳跃':c.contains('special')?'特殊技':'';if(act!==last[i]){last[i]=act;boxes[i].textContent=act?names[i]+' · '+act:'';boxes[i].classList.toggle('on',!!act)}if(act){var r=f.getBoundingClientRect(),gr=g.getBoundingClientRect();boxes[i].style.left=(r.left-gr.left+r.width*.55)+'px';boxes[i].style.top=(r.top-gr.top+r.height*.08-14)+'px'}});requestAnimationFrame(update)}update()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot()})();</script><script>document.addEventListener('click',function(e){if(e.target.closest('.start')){var v=document.querySelector('.vs');if(v)v.style.display='none'}});</script>'''
+          if 'action-callout' not in s:s=s.replace("</body>",js+"</body>",1)
+          elif 'querySelector(\'.start\')' not in s:s=s.replace("</body>",js+"</body>",1)
+          p.write_text(s,encoding="utf-8")
           PY
-      - name: Upload Pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
