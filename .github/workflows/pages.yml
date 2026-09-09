@@ -26,7 +26,8 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Hide battle VS after match starts
-        run: python3 -c "from pathlib import Path; p=Path('index.html'); s=p.read_text(encoding='utf-8'); patch='.game:has(.overlay[style*=\"display: none\"]) .vs{display:none!important}'; p.write_text(s.replace('</style>',patch+'</style>',1),encoding='utf-8') if patch not in s else None"
+        run: |
+          python3 -c 'from pathlib import Path; p=Path("index.html"); s=p.read_text(encoding="utf-8"); patch=".game:has(.overlay[style*=\\\"display: none\\\"]) .vs{display:none!important}"; p.write_text(s.replace("</style>",patch+"</style>",1),encoding="utf-8") if patch not in s else None'
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
