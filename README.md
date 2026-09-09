@@ -1,16 +1,35 @@
-"""
-Simple 2D fighting prototype: two AI-controlled fighters duel automatically.
+# 争霸赛
 
-- No player input required — both fighters are controlled by simple AIs.
-- If assets/fighter1.png, assets/fighter2.png, or assets/background.png exist, the game will use them.
-  Otherwise the game uses simple colored rectangles and a solid background.
+AI × AI 自动格斗观战游戏。
 
-Run:
-    pip install -r requirements.txt
-    python main.py
+## 当前版本
 
-Replace assets/background.png to change the background image.
-Replace assets/fighter1.png and assets/fighter2.png to use custom fighter sprites.
+**V1.1 战斗系统原型**
 
-Default controls: none (AI vs AI). Press ESC or close the window to quit.
-"""
+- 经典 2D 横版格斗视角
+- 赤焰：力量型 AI
+- 疾风：速度型 AI
+- 双方自动决策，无需玩家操作
+- 自动接近与距离判断
+- 普通攻击、重拳、重脚
+- 防御、闪避、跳跃行为
+- 必杀技与能量积累
+- 基础连击计数
+- 攻击/受击反馈与击退
+- HP 与 99 秒倒计时
+- 胜者结果画面
+- 移动端适配
+
+## 运行方式
+
+当前网页原型入口为 `index.html`，直接部署到 GitHub Pages 等静态托管即可运行。
+
+## 开发路线
+
+1. 战斗核心与 AI 决策
+2. 更完整的帧/状态系统与攻击判定
+3. 原创像素角色与逐帧动作
+4. 必杀技动画、音效、屏幕震动
+5. 更丰富的擂台与观战表现
+6. 增加原创角色
+7. 强化 AI 战术与不同战斗风格
