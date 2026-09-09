@@ -25,9 +25,18 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Hide battle VS after match starts
+      - name: Refine battle HUD and VS
         run: |
-          python3 -c 'from pathlib import Path; p=Path("index.html"); s=p.read_text(encoding="utf-8"); patch=".game:has(.overlay[style*=\\\"display: none\\\"]) .vs{display:none!important}"; p.write_text(s.replace("</style>",patch+"</style>",1),encoding="utf-8") if patch not in s else None'
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          css=".bar{height:12px!important;border-width:2px!important;transform:translateY(-5px)}.energy{height:4px!important;transform:translateY(-5px)}"
+          s=s.replace("</style>",css+"</style>",1) if css not in s else s
+          js="<script>document.addEventListener('click',function(e){if(e.target.closest('.start')){var v=document.querySelector('.vs');if(v)v.style.display='none'}})</script>"
+          s=s.replace("</body>",js+"</body>",1) if js not in s else s
+          p.write_text(s,encoding="utf-8")
+          PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
