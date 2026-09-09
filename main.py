@@ -19,6 +19,9 @@ ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'assets')
 F1_IMG = os.path.join(ASSETS_DIR, 'fighter1.png')
 F2_IMG = os.path.join(ASSETS_DIR, 'fighter2.png')
 BG_IMG = os.path.join(ASSETS_DIR, 'background.png')
+BG_DIR = os.path.join(ASSETS_DIR, 'backgrounds')  # optional directory for multiple backgrounds
+
+VALID_BG_EXT = ('.png', '.jpg', '.jpeg', '.bmp', '.gif')
 
 class Fighter:
     def __init__(self, x, y, facing=1, img_path=None, color=(255,255,255)):
@@ -126,14 +129,10 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
-        # load background if available
-        self.background = None
-        if os.path.exists(BG_IMG):
-            try:
-                bg = pygame.image.load(BG_IMG).convert()
-                self.background = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
-            except Exception:
-                self.background = None
+        # backgrounds list (can contain multiple backgrounds to cycle through)
+        self.backgrounds = []  # list of surfaces
+        self.bg_index = 0
+        self.load_backgrounds()
 
         # fighters
         f1_img = F1_IMG if os.path.exists(F1_IMG) else None
@@ -145,6 +144,62 @@ class Game:
         self.timer = self.round_time
         self.winner = None
         self.post_end_timer = 0
+
+        self.font = pygame.font.Font(None, 24)
+
+    def load_backgrounds(self):
+        """
+        Load backgrounds from assets/backgrounds/ (preferred) or from files named background*.ext in assets/.
+        If none found, but assets/background.png exists, use it. Otherwise no backgrounds.
+        """
+        self.backgrounds = []
+        # try directory
+        if os.path.isdir(BG_DIR):
+            files = sorted([f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))])
+            for f in files:
+                path = os.path.join(BG_DIR, f)
+                try:
+                    img = pygame.image.load(path).convert()
+                    img = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+                    self.backgrounds.append(img)
+                except Exception:
+                    continue
+        # fallback: look for background*.ext in assets
+        if not self.backgrounds and os.path.isdir(ASSETS_DIR):
+            files = sorted([f for f in os.listdir(ASSETS_DIR) if f.lower().startswith('background') and f.lower().endswith(VALID_BG_EXT)])
+            for f in files:
+                path = os.path.join(ASSETS_DIR, f)
+                try:
+                    img = pygame.image.load(path).convert()
+                    img = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+                    self.backgrounds.append(img)
+                except Exception:
+                    continue
+        # final fallback to single background.png
+        if not self.backgrounds and os.path.exists(BG_IMG):
+            try:
+                img = pygame.image.load(BG_IMG).convert()
+                img = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+                self.backgrounds.append(img)
+            except Exception:
+                pass
+
+        # ensure at least empty list if nothing loaded
+        if not self.backgrounds:
+            self.backgrounds = []
+        # clamp bg_index
+        if self.bg_index >= len(self.backgrounds):
+            self.bg_index = 0
+
+    def next_background(self):
+        if not self.backgrounds:
+            return
+        self.bg_index = (self.bg_index + 1) % len(self.backgrounds)
+
+    def prev_background(self):
+        if not self.backgrounds:
+            return
+        self.bg_index = (self.bg_index - 1) % len(self.backgrounds)
 
     def reset(self):
         self.f1.x = 100
@@ -206,8 +261,10 @@ class Game:
                 self.winner = 'Fighter 1'
 
     def draw(self):
-        if self.background:
-            self.screen.blit(self.background, (0,0))
+        # draw background (current) or plain color
+        if self.backgrounds:
+            bg = self.backgrounds[self.bg_index]
+            self.screen.blit(bg, (0,0))
         else:
             self.screen.fill(BG_COLOR)
 
@@ -230,6 +287,11 @@ class Game:
             text = big.render(f"{self.winner}", True, (240,240,80))
             self.screen.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, SCREEN_HEIGHT//2 - 40))
 
+        # background info / controls overlay
+        info = "Backgrounds: {} | B:next  V:prev  R:reload".format(len(self.backgrounds))
+        info_surf = self.font.render(info, True, WHITE)
+        self.screen.blit(info_surf, (10, 10))
+
         pygame.display.flip()
 
     def run(self):
@@ -240,6 +302,15 @@ class Game:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.running = False
+                    elif event.key == pygame.K_b:
+                        # next background
+                        self.next_background()
+                    elif event.key == pygame.K_v:
+                        # previous background
+                        self.prev_background()
+                    elif event.key == pygame.K_r:
+                        # reload backgrounds from disk
+                        self.load_backgrounds()
 
             self.update()
             self.draw()
