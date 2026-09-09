@@ -26,6 +26,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Inject pixel fighter layer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<script src="pixel-model.js"></script>'
+          if marker not in s:
+              s=s.replace('</head>',marker+'</head>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
