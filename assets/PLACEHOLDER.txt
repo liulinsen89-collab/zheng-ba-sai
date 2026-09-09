@@ -1,0 +1,9 @@
+# Assets placeholder
+
+Place your images here to customize the game visuals:
+
+- assets/fighter1.png  -> fighter A image
+- assets/fighter2.png  -> fighter B image
+- assets/background.png -> background image (will be scaled to the window)
+
+If these files are not present the game will draw simple shapes instead.
