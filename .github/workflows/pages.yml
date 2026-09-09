@@ -2,7 +2,8 @@ name: Deploy 争霸赛 to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,41 +12,24 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Apply final spectator layout
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("index.html")
-          s=p.read_text(encoding="utf-8")
-          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{position:absolute;z-index:55;display:none;pointer-events:none;font-size:clamp(9px,1.1vw,13px);font-weight:900;white-space:nowrap;background:#0009;padding:2px 6px;border-radius:3px;border:1px solid #ffffff44}.action-callout.f1{color:#ff3b30;text-shadow:2px 2px 0 #000,0 0 5px #ff3b30}.action-callout.f2{color:#38a8ff;text-shadow:2px 2px 0 #000,0 0 5px #38a8ff}.action-callout.on{display:block;animation:calloutIn .16s ease-out forwards}@keyframes calloutIn{from{opacity:0;transform:translateY(5px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
-/* V1.7.6 pixel-art visual layer */
-.fighter .sprite{display:none!important}.pixel-model{position:absolute;left:0;top:0;width:210px;height:300px;overflow:visible;transform-origin:50% 100%;image-rendering:pixelated;filter:drop-shadow(0 7px 3px #0009)}.pixel-model svg{width:100%;height:100%;overflow:visible;shape-rendering:crispEdges}.pixel-model .ink{stroke:#101219;stroke-width:5;stroke-linejoin:miter}.pixel-model .skin{fill:#d99a72}.pixel-model .skin-hi{fill:#f0b58b}.pixel-model .skin-sh{fill:#a9634d}.pixel-model .dark{fill:#171a22}.pixel-model .red{fill:#a5222c}.pixel-model .red-hi{fill:#e1433c}.pixel-model .gold{fill:#e8c65a}.pixel-model .blue{fill:#1d4d9b}.pixel-model .blue-hi{fill:#45aeea}.pixel-model .white{fill:#dceeff}.pixel-model .wind{fill:#7bd9ff}.pixel-model .shadow{fill:#07090e}.pixel-model .shine{fill:#fff4df}.fighter.p2 .pixel-model{transform:scaleX(-1)}
-.fighter.att .pixel-model .front-arm{animation:punchA .18s steps(3,end)}.fighter.att2 .pixel-model .front-arm{animation:punchB .22s steps(3,end)}.fighter.kick .pixel-model .front-leg{animation:kickA .28s steps(4,end)}.fighter.hurt .pixel-model .model-root{animation:hurtPix .22s steps(3,end)}.fighter.dodge .pixel-model .model-root{animation:dodgePix .3s steps(4,end)}.fighter.jump .pixel-model .model-root{animation:jumpPix .32s steps(4,end)}.fighter.guard .pixel-model .front-arm,.fighter.guard .pixel-model .back-arm{animation:guardPix .25s steps(3,end)}.fighter.special .pixel-model .aura{animation:auraPix .45s steps(4,end)}.fighter.ko .pixel-model{animation:koPix .7s steps(5,end) forwards}@keyframes punchA{50%{transform:translate(25px,-5px) rotate(-9deg)}}@keyframes punchB{50%{transform:translate(32px,-8px) rotate(-14deg)}}@keyframes kickA{50%{transform:translate(28px,-12px) rotate(-19deg)}}@keyframes hurtPix{50%{transform:translate(-13px,3px) rotate(6deg)}}@keyframes dodgePix{50%{transform:translate(-18px,0) rotate(-5deg)}}@keyframes jumpPix{50%{transform:translateY(-22px) rotate(-3deg)}}@keyframes guardPix{50%{transform:rotate(-22deg) translate(-5px,-3px)}}@keyframes auraPix{50%{opacity:.35;transform:scale(1.16)}}@keyframes koPix{to{transform:translateY(28px) rotate(88deg);opacity:.25}}
-'''
-          s=s.replace('</style>',css+'</style>',1)
-          js='''<script>(function(){function model(){return '<div class="pixel-model"><svg viewBox="0 0 210 300" aria-hidden="true"><g class="model-root"><ellipse class="shadow" cx="105" cy="294" rx="70" ry="9"/><g class="aura" opacity="0"><polygon class="red-hi" points="105,70 121,84 132,105 119,111 132,130 111,124 105,145 98,124 78,130 91,110 78,101 96,94"/></g><g class="back-arm"><path class="skin ink" d="M64 116l-31 13-17 22 8 9 25-13 35-13z"/><path class="skin-hi" d="M29 142l-10 12 7 3 18-12z"/><path class="red ink" d="M47 121l-25 12 7 15 29-14z"/></g><path class="blue ink" d="M72 185l-13 64 28 0 16-57z"/><path class="blue-hi" d="M83 191l-8 52 9 0 10-50z"/><path class="blue ink" d="M119 188l11 61 27 0-10-66z"/><path class="blue-hi" d="M127 195l9 49 11 0-9-51z"/><path class="dark ink" d="M59 246l-16 36 8 9 44-1 2-11-25-8 9-26z"/><path class="dark ink" d="M130 246l9 32-7 9 43 1 3-11-25-14 4-17z"/><path class="skin ink" d="M73 60q32-25 61 1l-4 49q-25 18-54 0z"/><path class="skin-hi" d="M81 67q24-17 45 0l-3 29q-18 12-38 1z"/><path class="skin-sh" d="M82 98q19 13 40-1v12q-19 14-39 1z"/><path class="dark ink" d="M69 72q-1-31 32-43 35 4 39 34l-10 25-7-24-14 14-7-22-18 19-7-8-2 28z"/><path class="red-hi ink" d="M70 54q13-24 40-25l-9 15-20 11z"/><path class="red ink" d="M111 30q25 7 30 30l-12 1-10-15-10 10z"/><rect class="dark" x="88" y="76" width="6" height="4"/><rect class="dark" x="116" y="76" width="6" height="4"/><path class="skin-sh ink" d="M94 91h17l-8 6z"/><path class="dark ink" d="M91 108h29l12 17-25 25-29-25z"/><path class="red ink" d="M63 119l31-12 26 7 17 48-11 31H69l-10-32z"/><path class="red-hi" d="M72 121l21-8 7 65-23 0z"/><path class="gold ink" d="M68 126l19-5 10 11-21 7z"/><path class="gold" d="M99 116l6 0 3 64-9 0z"/><path class="dark" d="M58 176l19 8-8 21-18-9z"/><path class="red-hi" d="M126 130l17 5-8 45-15-6z"/><g class="front-arm"><path class="red ink" d="M126 118l30 10 24 19-10 14-30-14-25-8z"/><path class="skin ink" d="M165 140l22 6 10 11-8 11-20-8-14-10z"/><path class="skin-hi" d="M178 148l11 6-5 8-12-5z"/><rect class="dark" x="175" y="151" width="11" height="4"/></g><path class="dark ink" d="M65 185l42 2-6 31-38-3z"/><path class="gold ink" d="M58 205l49 4-2 13-50-4z"/><path class="red-hi" d="M66 210l31 3-2 6-31-3z"/><g class="front-leg"><path class="dark ink" d="M105 215l28 0 8 36-30 4z"/><path class="dark" d="M112 220l13 0 6 28-13 1z"/><path class="blue-hi" d="M128 219l5 28 8 2-6-30z"/></g><path class="wind" d="M128 146l56 8-19 11-36-7z" opacity=".75"/></g></svg></div>'}function boot(){document.querySelectorAll('.fighter').forEach(function(f,i){if(f.querySelector('.pixel-model'))return;f.insertAdjacentHTML('afterbegin',model());var m=f.querySelector('.pixel-model');if(i===0){m.querySelectorAll('.blue,.blue-hi,.wind').forEach(function(x){x.classList.remove('blue','blue-hi','wind');x.classList.add('red')})}else{m.querySelectorAll('.red,.red-hi').forEach(function(x){x.classList.remove('red','red-hi');x.classList.add('blue')})}});var g=document.querySelector('.game'),status=document.getElementById('status'),fs=[document.getElementById('f1'),document.getElementById('f2')];if(!g||!status||!fs[0]||!fs[1])return;var boxes=fs.map(function(f,i){var d=document.createElement('div');d.className='action-callout f'+(i+1);g.appendChild(d);return d}),last=['',''],timers=[0,0];function parse(text){var m=text.match(/赤焰：(.+?)\s+VS\s+疾风：(.+)/);return m?[m[1].trim(),m[2].trim()]:['','']}function label(a){return ({'轻拳':'轻拳','重拳':'重拳','轻脚':'轻脚','重脚':'重脚','必杀技':'特殊技','防御':'防御','闪避':'闪避','跳跃':'跳跃'})[a]||''}function place(i){var r=fs[i].getBoundingClientRect(),gr=g.getBoundingClientRect();boxes[i].style.left=(r.left-gr.left+r.width*.5)+'px';boxes[i].style.top=(r.top-gr.top+r.height*.05-16)+'px';boxes[i].style.transform='translateX(-50%)'}function update(){var a=parse(status.textContent||'');a.forEach(function(v,i){var l=label(v);if(l!==last[i]){last[i]=l;clearTimeout(timers[i]);boxes[i].classList.remove('on');if(l){boxes[i].textContent=(i===0?'赤焰':'疾风')+' · '+l;place(i);boxes[i].classList.add('on');var delay=l==='特殊技'?700:430;timers[i]=setTimeout(function(){boxes[i].classList.remove('on')},delay)}}else if(l)place(i)});requestAnimationFrame(update)}update()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot()} )();</script>'''
-          if '</body>' in s and 'class="pixel-model"' not in s:
-            s=s.replace('</body>',js+'</body>',1)
-          p.write_text(s,encoding='utf-8')
-          PY
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: .
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
