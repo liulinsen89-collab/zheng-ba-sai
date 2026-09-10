@@ -1,0 +1,36 @@
+name: V3.0 Full Combat AI Upgrade
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v30-full-combat.yml'
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Apply V3.0 combat director
+        run: python3 tools/v30_patch.py
+      - name: Commit V3.0 source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "feat: upgrade V3.0 full combat AI director"
+          git push || true
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
