@@ -33,4 +33,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# V2.4.2 anti-dodge deployment trigger
+# V3.0 full combat AI deployment trigger
