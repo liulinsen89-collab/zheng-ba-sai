@@ -1,0 +1,63 @@
+name: Fix fighter spawn bounds
+
+on:
+  workflow_run:
+    workflows: ["Deploy 争霸赛 to GitHub Pages"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-spawn-fix
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Patch fighter coordinate system
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r"style=\"left:\d+%\"", 'style="left:5%"', s, count=1)
+          s=re.sub(r"style=\"left:\d+%\"", 'style="left:82%"', s, count=1)
+          s=re.sub(r"const A=make\(1,\d+,'power'\),B=make\(2,\d+,'speed'\)", "const A=make(1,5,'power'),B=make(2,82,'speed')", s, count=1)
+          s=re.sub(r"resetF\(A,\d+\);resetF\(B,\d+\)", "resetF(A,5);resetF(B,82)", s, count=1)
+          patch="""
+          // Hard bounds: the visual spawn and the AI coordinate space use the same edges.
+          const __renderWithBounds=render;
+          render=function(){
+            A.x=Math.max(5,Math.min(82,A.x));
+            B.x=Math.max(5,Math.min(82,B.x));
+            __renderWithBounds();
+          };
+          A.x=5;B.x=82;matchStart=performance.now();
+          __renderWithBounds();
+          """
+          marker='})();</script>'
+          if marker not in s:
+              raise SystemExit('game script marker not found')
+          s=s.replace(marker,patch+marker,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
