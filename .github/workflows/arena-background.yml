@@ -55,3 +55,5 @@ jobs:
           git add index.html
           git commit -m 'feat: use uploaded martial arts arena as game background'
           git push
+
+# Trigger a fresh Pages deployment from the user-authored workflow update.
