@@ -1,0 +1,71 @@
+name: V2.3 AI decisions + combo system
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Patch V2.3 into game
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          if 'V2_3_AI_COMBO' in s:
+              print('V2.3 already applied')
+              raise SystemExit(0)
+
+          # 1) Smarter AI decision-making: pressure, spacing, reactions and combo follow-ups.
+          new_decide = r'''function decide(f,e){if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;const q=gap(),c=cfg[f.kind],style=c.style,low=f.hp<240,enemyLow=e.hp<180,incoming=!!e.action&&e.action.t<e.action.max,enemyWinding=!!e.action&&e.action.t<e.action.w,enemyActive=!!e.action&&e.action.t>=e.action.w&&e.action.t<a=undefined;'''
+          # Build the function separately to keep the replacement readable.
+          new_decide = '''function decide(f,e){if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;const q=gap(),c=cfg[f.kind],style=c.style,low=f.hp<240,enemyLow=e.hp<180,incoming=!!e.action&&e.action.t<e.action.max,enemyWinding=!!e.action&&e.action.t<e.action.w,enemyActive=!!e.action&&e.action.t>=e.action.w&&e.action.t<e.action.w+e.action.a;\nif(incoming&&q<27){if(enemyWinding&&style==='evasive'&&Math.random()<.34){f.dodge=.30;f.state='dodge';f.x=Math.max(8,Math.min(92,f.x+f.face*4.2));visual(f,'dodge');f.cool=.42;return}const guardChance=style==='aggressive'?(low?.20:.08):(.24+(low?.12:0));if(Math.random()<guardChance){f.guard=style==='aggressive'?.24:.42;f.state='guard';visual(f,'guard');f.cool=.30;return}if(style==='evasive'&&Math.random()<.24){f.dodge=.30;f.state='dodge';f.x=Math.max(8,Math.min(92,f.x-f.face*(low?4.5:3.5)));visual(f,'dodge');f.cool=.46;return}}\nif(style==='evasive'){if(q<14){f.state='approach';f.x-=f.face*(low?1.35:1.05);return}if(q>24){f.state='approach';f.x+=f.face*(low?1.10:1.35);return}}else if(q>c.reach+1){f.state='approach';f.x+=f.face*(low?c.speed*.92:c.speed*1.12);return}\nif(f.en>=100&&q<c.special[2]&&(enemyLow||q<20||Math.random()<.22)){f.en=0;begin(f,'special',c.special);return}\nif(enemyActive&&q<=c.reach+2&&style==='aggressive'&&Math.random()<.48){f.state='attack';}\nif(style==='evasive'&&low&&Math.random()<.28){f.jump=.42;f.state='jump';visual(f,'jump');f.cool=.52;return}\nif(f.combo>0&&f.comboT>0){const arr=c.atk;const chain=[arr[0],arr[0],arr[1],arr[2],arr[3]];const m=chain[Math.min(f.combo,chain.length-1)];const type=m===arr[0]?'attack':m===arr[1]?'heavy':m===arr[2]?'lightkick':'kick';if(Math.random()<(style==='aggressive'?.88:.72)){begin(f,type,m);return}}\nconst arr=c.atk;let r=Math.random();if(style==='aggressive'){r=Math.min(1,r+.13);const m=r<.30?arr[0]:r<.60?arr[1]:r<.80?arr[2]:arr[3];const type=m===arr[0]?'attack':m===arr[1]?'heavy':m===arr[2]?'lightkick':'kick';begin(f,type,m);return}if(r<.46){begin(f,'attack',arr[0]);return}if(r<.68){begin(f,'lightkick',arr[2]);return}if(r<.86){begin(f,'heavy',arr[1]);return}begin(f,'kick',arr[3])}'''
+          # Normalize the accidental newline introduced above so the minified source stays valid.
+          new_decide = new_decide.replace('enemyActive=!!e.action&&e.action.t>=e.action.w&&e.action.t<e.action.w+e.action.a;\\n','enemyActive=!!e.action&&e.action.t>=e.action.w&&e.action.t<e.action.w+e.action.a;')
+          s2, n = re.subn(r'function decide\(f,e\)\{.*?\}function update\(f,e,dt\)\{', new_decide + 'function update(f,e,dt){', s, count=1)
+          if n != 1:
+              raise SystemExit('Could not find decide()')
+          s = s2
+
+          # 2) Combo presentation: real light->light->heavy/kick chaining and 3/5-hit callouts.
+          new_combo = '''function showCombo(f){if(f.combo<2)return;const e=$('combo');e.textContent=f.combo>=5?'5 HIT COMBO':f.combo>=3?'3 HIT COMBO':f.combo+' HIT COMBO';e.classList.remove('show');void e.offsetWidth;e.classList.add('show')}'''
+          s, n = re.subn(r'function showCombo\(f\)\{.*?\}function clearAction', new_combo+'function clearAction', s, count=1)
+          if n != 1:
+              raise SystemExit('Could not find showCombo()')
+
+          # 3) Counter hit feedback and a small reward for catching an opponent during wind-up.
+          old = "const blocked=e.guard>0,baseDmg=blocked?Math.max(1,Math.round(a.d*.18)):a.d,isSpecial=a.n==='烈焰冲击'||a.n==='疾风连闪',dmg=isSpecial?210:Math.max(1,Math.round(baseDmg*.5));"
+          new = "const blocked=e.guard>0,baseDmg=blocked?Math.max(1,Math.round(a.d*.18)):a.d,isSpecial=a.n==='烈焰冲击'||a.n==='疾风连闪',counter=!blocked&&!isSpecial&&!!e.action&&e.action.t<e.action.w,dmg=isSpecial?210:Math.max(1,Math.round(baseDmg*(counter?0.62:.5)));"
+          if old not in s:
+              raise SystemExit('Could not find damage expression')
+          s = s.replace(old,new,1)
+          old2 = "if(isSpecial)specialFX(f,e);e.hp=Math.max(0,e.hp-dmg);"
+          new2 = "if(isSpecial)specialFX(f,e);if(counter)effect(e.x,40,'COUNTER','counter',.72);e.hp=Math.max(0,e.hp-dmg);"
+          if old2 not in s:
+              raise SystemExit('Could not find strike hook')
+          s = s.replace(old2,new2,1)
+
+          # 4) Visual treatment for combo/counter labels.
+          css = '''<style id="v23-ai-combo-css">\n.combo{left:50%;bottom:24%;transform:translateX(-50%) skew(-8deg);font-size:clamp(22px,4.5vw,52px);letter-spacing:.06em;color:#f6d34a;text-shadow:4px 4px #000,0 0 18px #ff7a18}.counter{position:absolute;z-index:56;font-size:clamp(18px,3.2vw,38px);font-weight:1000;color:#fff;letter-spacing:.08em;text-shadow:3px 3px #000,0 0 16px #ff3b30;animation:counterIn .62s ease-out forwards;pointer-events:none;transform:translate(-50%,-50%) skew(-8deg)}@keyframes counterIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.55) skew(-8deg)}22%{opacity:1;transform:translate(-50%,-50%) scale(1.18) skew(-8deg)}100%{opacity:0;transform:translate(-50%,-72%) scale(1) skew(-8deg)}}\n</style>'''
+          if 'v23-ai-combo-css' not in s:
+              s = s.replace('</head>', css+'</head>', 1)
+
+          # 5) Marker so later workflow runs are idempotent.
+          s = s.replace('</main>', '<!-- V2_3_AI_COMBO -->\n</main>', 1)
+          p.write_text(s, encoding='utf-8')
+          print('V2.3 patch applied')
+          PY
+      - name: Commit source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && echo "No source changes" || git commit -m "feat: add V2.3 smarter AI and combo chains"
+          git push
