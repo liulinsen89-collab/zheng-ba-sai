@@ -34,3 +34,4 @@ jobs:
         uses: actions/deploy-pages@v4
 
 # Rebuild Pages from the CSS-only arena background source.
+# Re-deploy after V2.3.3 side-switch / anti-stuck movement.
