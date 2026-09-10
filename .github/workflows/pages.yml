@@ -32,3 +32,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+# Force Pages to rebuild from the latest source commit after the arena background fix.
