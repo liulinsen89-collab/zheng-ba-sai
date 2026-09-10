@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply uploaded arena background
+      - name: Apply reliable CSS arena background
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -22,24 +22,49 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
           marker = '<!-- ARENA_BG_V1 -->'
-          image = 'https://raw.githubusercontent.com/liulinsen89-collab/zheng-ba-sai/main/file_0000000095e48209a656a2b8cabe98f3.png'
 
-          # Use the raw GitHub image URL so the Pages site does not depend on
-          # project-path resolution or Pages asset handling for this PNG.
-          for old in [
-              "url('./file_0000000095e48209a656a2b8cabe98f3.png')",
-              'url("./file_0000000095e48209a656a2b8cabe98f3.png")',
-              "url('/zheng-ba-sai/file_0000000095e48209a656a2b8cabe98f3.png')",
-              'url("/zheng-ba-sai/file_0000000095e48209a656a2b8cabe98f3.png")'
-          ]:
-              s = s.replace(old, f"url('{image}')")
-
-          if marker not in s:
-              css = f'''<style id="arena-bg-v1">
-          /* ARENA_BG_V1: use the user's uploaded martial-arts arena image as the battle background */
-          .game{{background:#0b1220 linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.12)),url('{image}') center center/cover no-repeat!important}}
-          .scene.sky,.scene.moon,.scene.mountain,.scene.palace,.scene.waterfall,.scene.mist,.scene.cherry,.scene.lantern,.scene.banner,.scene.platform,.scene.floor{{display:none!important}}
+          css = '''<style id="arena-bg-v1">
+          /* ARENA_BG_V4: reliable pure-CSS martial-arts arena; no external image dependency */
+          .game{
+            background:
+              radial-gradient(ellipse at 50% 30%, rgba(72,92,130,.55) 0%, rgba(25,35,58,.7) 35%, rgba(5,9,18,.98) 78%),
+              linear-gradient(180deg,#17243a 0%,#0d1729 48%,#090d16 72%,#05070d 100%) !important;
+          }
+          .game:before{
+            content:"";
+            position:absolute;
+            z-index:1;
+            left:0;right:0;top:0;bottom:0;
+            pointer-events:none;
+            background:
+              radial-gradient(circle at 13% 48%,rgba(255,70,45,.22),transparent 16%),
+              radial-gradient(circle at 87% 48%,rgba(60,160,255,.22),transparent 16%),
+              linear-gradient(90deg,transparent 0 12%,rgba(255,255,255,.025) 12.1% 12.3%,transparent 12.4% 87.6%,rgba(255,255,255,.025) 87.7% 87.9%,transparent 88%);
+          }
+          .game:after{
+            content:"";
+            position:absolute;
+            z-index:2;
+            left:4%;right:4%;bottom:8%;height:26%;
+            pointer-events:none;
+            border-top:2px solid rgba(235,210,130,.55);
+            background:
+              repeating-linear-gradient(90deg,transparent 0 9.8%,rgba(255,255,255,.06) 10% 10.2%),
+              repeating-linear-gradient(0deg,transparent 0 24.5%,rgba(255,255,255,.045) 25% 25.4%);
+            transform:perspective(420px) rotateX(58deg);
+            transform-origin:center top;
+          }
+          .scene.sky,.scene.moon,.scene.mountain,.scene.palace,.scene.waterfall,.scene.mist,.scene.cherry,.scene.lantern,.scene.banner,.scene.platform,.scene.floor{display:none!important}
+          .hud,.vs,.fighter,.overlay,.combo,.hit,.ring,.debris,.action-callout,.special-flash,.special-title,.special-charge,.special-ring,.special-beam,.special-damage{position:absolute}
           </style>'''
+
+          if marker in s:
+              start = s.find(marker)
+              style_start = s.find('<style id="arena-bg-v1">', start)
+              style_end = s.find('</style>', style_start)
+              if style_start != -1 and style_end != -1:
+                  s = s[:style_start] + css.strip() + s[style_end+8:]
+          else:
               s = s.replace('</head>', marker + css + '</head>', 1)
 
           p.write_text(s, encoding='utf-8')
@@ -54,7 +79,7 @@ jobs:
             exit 0
           fi
           git add index.html
-          git commit -m 'fix: load arena background from raw GitHub asset'
+          git commit -m 'fix: replace unreliable image background with CSS arena'
           git push
 
-# Background source marker: ARENA_BG_V3
+# Background source marker: ARENA_BG_V4
