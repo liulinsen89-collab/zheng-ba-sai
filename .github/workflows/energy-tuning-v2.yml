@@ -1,0 +1,50 @@
+name: Energy Tuning V2
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tune energy to 50 seconds and make specials devastating
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          if 'ENERGY_TUNING_V2' in s:
+              print('Energy Tuning V2 already applied.')
+              raise SystemExit(0)
+
+          old = "const blocked=e.guard>0,baseDmg=blocked?Math.max(1,Math.round(a.d*.18)):a.d,isSpecial=a.n==='烈焰冲击'||a.n==='疾风连闪',dmg=isSpecial?220:Math.max(1,Math.round(baseDmg*.5));"
+          new = "const blocked=e.guard>0,baseDmg=blocked?Math.max(1,Math.round(a.d*.18)):a.d,isSpecial=a.n==='烈焰冲击'||a.n==='疾风连闪',dmg=isSpecial?210:Math.max(1,Math.round(baseDmg*.5));"
+          if old not in s:
+              raise SystemExit('damage formula not found')
+          s = s.replace(old, new, 1)
+
+          old = "f.en=Math.min(100,f.en+(blocked?.7:Math.max(.45,baseDmg*.38)));"
+          new = "f.en=Math.min(100,f.en+(blocked?.35:Math.max(.15,baseDmg*.20)));"
+          if old not in s:
+              raise SystemExit('energy formula not found')
+          s = s.replace(old, new, 1)
+
+          s = s.replace("/* ENERGY_OVERDRIVE_V1 */function strike(f,e){", "/* ENERGY_OVERDRIVE_V1 */ /* ENERGY_TUNING_V2 */function strike(f,e){", 1)
+          p.write_text(s, encoding='utf-8')
+          print('Applied: energy ~50s target, special 210/600 = 35%.')
+          PY
+
+      - name: Commit tuned source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "balance: slow energy to 50s and boost specials"
+          git push
