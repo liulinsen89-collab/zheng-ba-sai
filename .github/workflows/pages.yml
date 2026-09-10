@@ -23,18 +23,70 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Inject V3.2 combat arbiter
+
+      - name: Build V3.3 real AI arbiter
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          patch=Path('tools/v32-runtime.html').read_text(encoding='utf-8')
-          marker='__v32'
+
+          # The previous V3.2 layer incorrectly relied on window.A/window.B/window.cfg.
+          # Top-level const/let declarations are lexical bindings, not window properties.
+          # Expose the actual game objects so the arbiter operates on the real fighters.
+          s=re.sub(r'\bconst\s+cfg\s*=', 'window.cfg=', s, count=1)
+          s=re.sub(r'\blet\s+cfg\s*=', 'window.cfg=', s, count=1)
+          s=re.sub(r'\bconst\s+A\s*=', 'window.A=', s, count=1)
+          s=re.sub(r'\blet\s+A\s*=', 'window.A=', s, count=1)
+          s=re.sub(r'\bconst\s+B\s*=', 'window.B=', s, count=1)
+          s=re.sub(r'\blet\s+B\s*=', 'window.B=', s, count=1)
+
+          marker='__v33_real_arbiter'
+          patch=r'''<script id="__v33_real_arbiter">
+          (()=>{
+            document.title='争霸赛 · V3.3 AI Core';
+            const T=performance.now.bind(performance), LIVE=new Set(['attack','att','heavy','kick','lightkick','special']);
+            const S={A:{last:'',same:0,dodge:0,attacks:0,switchAt:0},B:{last:'',same:0,dodge:0,attacks:0,switchAt:0}};
+            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            function arr(f){return (window.cfg&&window.cfg[f.kind]&&window.cfg[f.kind].atk)||['jab','heavy','kick','lightkick']}
+            function attack(f,e,idx){
+              if(!f||!e||f.hp<=0||e.hp<=0||typeof begin!=='function')return;
+              const a=arr(f), name=a[Math.abs(idx)%a.length];
+              f.vx=0; f.dodge=0; f.cool=0;
+              begin(f,'attack',name);
+            }
+            function tick(f,e,key){
+              if(!f||!e||f.hp<=0||e.hp<=0)return;
+              const q=S[key], st=f.state||'', dist=Math.abs((f.x||0)-(e.x||0));
+              if(st===q.last)q.same++; else {q.last=st;q.same=0}
+              if(st==='dodge')q.dodge++; else if(LIVE.has(st))q.dodge=0;
+              if(LIVE.has(st))q.attacks++;
+
+              // Hard anti-loop rules operate on the actual fighter objects.
+              if(dist<135 && q.dodge>=2){q.dodge=0;q.same=0;q.switchAt=T();attack(f,e,q.attacks+2);return}
+              if(dist<135 && q.same>=6){q.same=0;q.switchAt=T();attack(f,e,q.attacks+(key==='A'?3:1));return}
+              if(dist<190 && st==='idle' && q.same>=5){q.same=0;attack(f,e,q.attacks+1);return}
+              if(dist>190){
+                const dir=e.x>f.x?1:-1;
+                f.vx=dir*(key==='B'?1.45:1.18);
+                if(q.same>=8)f.vx*=1.7;
+              }
+              if(T()-q.switchAt>2200 && (st==='idle'||st==='dodge')){
+                q.same=0;q.dodge=0;q.switchAt=T();attack(f,e,q.attacks+2);
+              }
+            }
+            const boot=setInterval(()=>{
+              if(window.A&&window.B&&window.cfg){clearInterval(boot);}
+            },20);
+            setInterval(()=>{if(window.A&&window.B){tick(window.A,window.B,'A');tick(window.B,window.A,'B')}},180);
+          })();
+          </script>'''
           if marker not in s:
-              s=s.replace('</body>', patch+'</body>') if '</body>' in s else s+patch
-              p.write_text(s,encoding='utf-8')
+              s=s.replace('</body>',patch+'</body>') if '</body>' in s else s+patch
+          p.write_text(s,encoding='utf-8')
           PY
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
@@ -45,4 +97,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# V3.2 combat loop deployment
+# V3.3 real AI arbiter deployment
