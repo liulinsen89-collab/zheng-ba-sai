@@ -1,5 +1,7 @@
 name: V2.3 AI decisions + combo system
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -36,5 +38,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
+          git diff --cached --quiet && exit 0
           git commit -m "feat: add V2.3 smarter AI and combo chains"
           git push
