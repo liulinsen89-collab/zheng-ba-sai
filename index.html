@@ -181,3 +181,23 @@ const t=setInterval(()=>{if(install())clearInterval(t)},50);setInterval(()=>{if(
 })();
 </script>
 </body></html>
+<!-- V3_1_AI_CORE_REBUILD -->
+<script>
+(()=>{
+const mem=new WeakMap();
+const dist=(a,b)=>Math.abs((a?.x||0)-(b?.x||0));
+const busy=s=>['att','attack','heavy','kick','lightkick','special','hit','ko'].includes(s);
+const acts=f=>(window.cfg&&window.cfg[f.kind]&&window.cfg[f.kind].atk)||['jab','heavy','kick','lightkick'];
+function M(f){let x=mem.get(f);if(!x){x={last:'',repeat:0,dodge:0};mem.set(f,x)}return x}
+function act(f,name){if(!f||f.hp<=0)return;const x=M(f);x.repeat=x.last===name?x.repeat+1:1;x.last=name;if(typeof begin==='function')begin(f,'attack',name);else f.state='attack'}
+function choose(f,e){if(!f||!e||f.hp<=0||e.hp<=0)return;const x=M(f),d=dist(f,e),low=f.hp/(f.maxHp||600)<.3,enemyLow=e.hp/(e.maxHp||600)<.28,a=acts(f),speed=f===window.B;
+if(f.state==='dodge'){x.dodge++;if(d<155||x.dodge>=1){x.dodge=0;f.dodge=0;act(f,a[Math.random()<.55?0:1]||a[0])}return}
+x.dodge=0;if(busy(f.state))return;if(x.repeat>=3){x.repeat=0;act(f,a[(a.indexOf(x.last)+1+a.length)%a.length]||a[0]);return}
+if(d>230){f.vx=(e.x>f.x?1:-1)*(speed?1.55:1.28);return}
+if(d>145){f.vx=(e.x>f.x?1:-1)*(speed?1.15:1);if(Math.random()<(speed?.4:.55))act(f,a[Math.random()<.5?0:2]||a[0]);return}
+f.vx=0;if(enemyLow||low){act(f,a[Math.random()<.5?1:2]||a[0]);return}
+const r=Math.random();if(speed&&r<.22){f.vx=(e.x>f.x?-0.8:0.8);return}act(f,r<.45?a[0]:r<.75?a[1]||a[0]:a[2]||a[0]);}
+function install(){if(!window.decide||window.decide.__v31)return false;window.decide.__v31=true;window.decide=function(f,e){choose(f,e||(f===window.A?window.B:window.A))};return true}
+const t=setInterval(()=>{if(install())clearInterval(t)},30);setInterval(()=>{if(window.A&&window.B){choose(window.A,window.B);choose(window.B,window.A)}},420);
+})();
+</script>
