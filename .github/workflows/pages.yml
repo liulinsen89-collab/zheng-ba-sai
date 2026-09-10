@@ -25,23 +25,49 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Apply final spectator layout
+      - name: Apply V1.9 combo combat
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("index.html")
-          s=p.read_text(encoding="utf-8")
-          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{z-index:55;display:block;position:absolute;pointer-events:none;font-weight:1000;font-size:clamp(10px,1.35vw,17px);white-space:nowrap;text-shadow:2px 2px #000;animation:callout .43s ease-out forwards}.action-callout.f1{color:#ff3b30!important;text-shadow:2px 2px #000,0 0 5px #ff3b30!important}.action-callout.f2{color:#38a8ff!important;text-shadow:2px 2px #000,0 0 5px #38a8ff!important}.fighter .scarf{display:none!important}.fighter .boot{bottom:11px!important;z-index:4!important}.fighter .boot.l{left:43px!important}.fighter .boot.r{left:98px!important}'''
-          s=s.replace("</style>",css+"</style>",1)
-          # Safe visual spawn positions: the fighters are scaled, so do not use the extreme 3/87% edges.
-          s=s.replace('style="left:21%"','style="left:6%"',1)
-          s=s.replace('style="left:69%"','style="left:76%"',1)
-          s=s.replace("const A=make(1,21,'power'),B=make(2,69,'speed')","const A=make(1,6,'power'),B=make(2,76,'speed')",1)
-          s=s.replace("resetF(A,21);resetF(B,69)","resetF(A,6);resetF(B,76)",1)
-          # Hold the actual DOM positions for the opening formation so the player can clearly see both spawn points.
-          boot_js='''<script>(function(){const a=document.querySelector('.fighter.p1'),b=document.querySelector('.fighter.p2');if(!a||!b)return;const until=performance.now()+1800;function lock(){a.style.left='6%';b.style.left='76%';if(performance.now()<until)requestAnimationFrame(lock)}lock()})();</script>'''
-          s=s.replace('</body>',boot_js+'</body>',1)
-          p.write_text(s,encoding="utf-8")
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          css='''.combo{left:50%!important;bottom:25%!important;transform:translateX(-50%);font-size:clamp(16px,2.4vw,30px)!important;color:#f4d45b!important;text-shadow:3px 3px #000!important}.combo.show{animation:comboIn .7s forwards!important}.fighter.combo-hit .sprite{filter:drop-shadow(0 0 10px #fff) drop-shadow(0 6px 3px #0007)!important}'''
+          s=s.replace('</style>',css+'</style>',1)
+          combo_js=r'''<script>
+          (function(){
+            const oldDecide=decide;
+            const chainTimer={1:null,2:null};
+            function doChain(f,e){
+              if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;
+              const c=cfg[f.kind];
+              const seq=f.kind==='power' ? [c.atk[0],c.atk[1],c.atk[3]] : [c.atk[0],c.atk[2],c.atk[0]];
+              let i=0;
+              function next(){
+                if(!running||f.hp<=0||e.hp<=0||i>=seq.length)return;
+                const m=seq[i++];
+                const type=m===c.atk[0]?'attack':m===c.atk[1]?'heavy':m===c.atk[2]?'lightkick':'kick';
+                if(begin(f,type,m)){
+                  f.chain=i;
+                  chainTimer[f.id]=setTimeout(()=>{if(running)next()},Math.max(190,m[5]*1000+170));
+                }
+              }
+              next();
+            }
+            decide=function(f,e){
+              if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;
+              const q=Math.abs(f.x-e.x);
+              if(q<=18 && q>=9 && Math.random()<(f.kind==='power'?.22:.18)){
+                doChain(f,e);return;
+              }
+              return oldDecide(f,e);
+            };
+          })();
+          </script>'''
+          marker='})();</script>'
+          if marker not in s:
+              raise SystemExit('game script marker not found')
+          s=s.replace(marker,combo_js+'<script>(function(){})();</script>'+marker,1)
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
