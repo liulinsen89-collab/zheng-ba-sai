@@ -33,20 +33,25 @@ jobs:
           s=p.read_text(encoding="utf-8")
           css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{z-index:55;display:block;pointer-events:none;font-weight:1000;font-size:clamp(10px,1.35vw,17px);white-space:nowrap;text-shadow:2px 2px #000;animation:callout .43s ease-out forwards}.action-callout.f1{color:#ff3b30!important;text-shadow:2px 2px #000,0 0 5px #ff3b30!important}.action-callout.f2{color:#38a8ff!important;text-shadow:2px 2px #000,0 0 5px #38a8ff!important}.fighter .scarf{display:none!important}.fighter .boot{bottom:11px!important;z-index:4!important}.fighter .boot.l{left:43px!important}.fighter .boot.r{left:98px!important}.kick .shin.r,.kick .boot.r{animation:frontKick .30s steps(4);transform-origin:50% 100%}.lightkick .shin.r,.lightkick .boot.r{animation:lightKick .24s steps(4);transform-origin:50% 100%}.jump .shin.l{animation:airLL .46s}.jump .shin.r{animation:airLR .46s}.jump .boot.l{animation:airLL .46s}.jump .boot.r{animation:airLR .46s}'''
           s=s.replace("</style>",css+"</style>",1)
-          # The previous deployment patch used !important left positions, which froze the visuals while the AI coordinates kept moving.
-          # Remove that override and make the source positions authoritative.
-          s=s.replace('.fighter#f1{left:8%!important}.fighter#f2{left:78%!important}','')
+          # Start from the two sides and keep those positions as the source of truth.
           s=s.replace('style="left:21%"','style="left:8%"',2)
           s=s.replace('style="left:69%"','style="left:78%"',2)
           s=s.replace("const A=make(1,21,'power'),B=make(2,69,'speed')","const A=make(1,8,'power'),B=make(2,78,'speed')")
           s=s.replace("resetF(A,21);resetF(B,69)","resetF(A,8);resetF(B,78)")
-          # Tighten the real attack distance so hits require the fighters to visibly close in.
-          s=s.replace("reach:17,atk:","reach:10.5,atk:")
-          # Keep the action label attached to the actual rendered fighter instead of a fixed screen position.
-          old="""function callout(f){if(!running||f.hp<=0)return;const label=names[f.state]||'';if(!label||['idle','approach','hurt','ko'].includes(f.state))return;const e=document.createElement('div');e.className='action-callout '+(f.id===1?'f1':'f2');e.textContent=label;e.style.left=(f.x+(f.id===1?5:-5))+'%';e.style.top='52%';G.appendChild(e);setTimeout(()=>e.remove(),450)}"""
-          new="""function callout(f){if(!running||f.hp<=0)return;const label=names[f.state]||'';if(!label||['idle','approach','hurt','ko'].includes(f.state))return;const e=document.createElement('div');e.className='action-callout '+(f.id===1?'f1':'f2');e.textContent=label;G.appendChild(e);const n=node(f),started=performance.now(),life=450;function follow(now){if(!e.isConnected)return;const r=n.getBoundingClientRect(),g=G.getBoundingClientRect();e.style.left=(r.left+r.width/2-g.left)+'px';e.style.top=Math.max(58,r.top-g.top-30)+'px';if(now-started<life)requestAnimationFrame(follow);else e.remove()}requestAnimationFrame(follow)}"""
-          if old in s:
-              s=s.replace(old,new,1)
+          # Make the combat range consistent and require the fighters to visibly close in.
+          s=s.replace('reach:17,atk:', 'reach:11,atk:')
+          # Replace the hit routine with a symmetric, center-distance based routine.
+          old="""function strike(f,e){const a=f.action;if(!a||a.hit||e.hp<=0)return;if(e.dodge>0||e.jump>0||gap()>a.r)return;a.hit=true;const blocked=e.guard>0,dmg=blocked?Math.max(1,Math.round(a.d*.18)):a.d;e.hp=Math.max(0,e.hp-dmg);e.stun=blocked?.08:(a.d>=20?.32:.20);e.state=e.hp<=0?'ko':blocked?'guard':'hurt';if(!blocked)visual(e,'hurt');else visual(e,'guard');f.en=Math.min(100,f.en+(blocked?2:dmg*1.35));f.combo++;f.comboT=1.05;e.combo=0;e.comboT=0;burst(e.x,48,a.d>=20);effect(e.x,53,blocked?'GUARD':'-'+dmg);if(a.n==='烈焰冲击'||a.n==='疾风连闪')burst(e.x,46,true);shake=Math.max(shake,a.d>=20?.18:.09);if(a.d>=20)time=Math.max(0,time-.12);showCombo(f);clearAction(f)}"""
+          new="""function strike(f,e){const a=f.action;if(!a||a.hit||e.hp<=0)return;const dist=Math.abs(f.x-e.x);const reach=Math.min(a.r,11.5);if(e.dodge>0||e.jump>0||dist>reach)return;const dir=e.x>=f.x?1:-1;if(f.face!==dir&&dist>4)return;a.hit=true;const blocked=e.guard>0,dmg=blocked?Math.max(1,Math.round(a.d*.18)):Math.max(1,a.d);e.hp=Math.max(0,e.hp-dmg);e.stun=blocked?.08:(a.d>=20?.32:.20);e.state=e.hp<=0?'ko':blocked?'guard':'hurt';if(!blocked)visual(e,'hurt');else visual(e,'guard');f.en=Math.min(100,f.en+(blocked?2:dmg*1.35));f.combo++;f.comboT=1.05;e.combo=0;e.comboT=0;burst(e.x,48,a.d>=20);effect(e.x,53,blocked?'GUARD':'-'+dmg);if(a.n==='烈焰冲击'||a.n==='疾风连闪')burst(e.x,46,true);shake=Math.max(shake,a.d>=20?.18:.09);if(a.d>=20)time=Math.max(0,time-.12);showCombo(f);clearAction(f)}"""
+          if old not in s:
+              raise SystemExit('strike function not found')
+          s=s.replace(old,new,1)
+          # Prevent the AI from walking through either edge or past the opponent.
+          old_loop="""function loop(ts){if(!running)return;const dt=Math.min(.05,(ts-last)/1000||0);last=ts;time=Math.max(0,time-dt);shake=Math.max(0,shake-dt);A.face=B.x>=A.x?1:-1;B.face=A.x>=B.x?1:-1;update(A,B,dt);update(B,A,dt);separate();fxs=fxs.filter(o=>{o.t-=dt;if(o.t<=0){o.e.remove();return false}return true});render();if(time<=0||A.hp<=0||B.hp<=0){end();return}raf=requestAnimationFrame(loop)}"""
+          new_loop="""function loop(ts){if(!running)return;const dt=Math.min(.05,(ts-last)/1000||0);last=ts;time=Math.max(0,time-dt);shake=Math.max(0,shake-dt);A.face=B.x>=A.x?1:-1;B.face=A.x>=B.x?1:-1;update(A,B,dt);update(B,A,dt);separate();A.x=Math.max(7,Math.min(93,A.x));B.x=Math.max(7,Math.min(93,B.x));if(Math.abs(B.x-A.x)>60){A.x=Math.max(7,Math.min(93,A.x));B.x=Math.max(7,Math.min(93,B.x));}fxs=fxs.filter(o=>{o.t-=dt;if(o.t<=0){o.e.remove();return false}return true});render();if(time<=0||A.hp<=0||B.hp<=0){end();return}raf=requestAnimationFrame(loop)}"""
+          if old_loop not in s:
+              raise SystemExit('loop function not found')
+          s=s.replace(old_loop,new_loop,1)
           p.write_text(s,encoding="utf-8")
           PY
       - name: Upload artifact
