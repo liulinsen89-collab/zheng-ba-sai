@@ -68,7 +68,7 @@ jobs:
             for(let i=0;i<18;i++){const p=document.createElement('b');p.className='sfv3-particle';layer.appendChild(p)}
             game.appendChild(layer);
             let last=0, active=false;
-            function fire(kind,name){
+            function playSpecial(kind,name){
               const now=performance.now(); if(now-last<900||active)return; last=now; active=true;
               layer.className='sfv3-layer '+(kind==='fire'?'sfv3-fire':'sfv3-wind')+' sfv3-show';
               layer.querySelector('.sfv3-title').textContent=name|| (kind==='fire'?'烈焰冲击':'疾风连闪');
@@ -85,7 +85,7 @@ jobs:
             function check(f){
               const cls=f.className||''; const text=(f.innerText||f.textContent||'');
               const hit=/special/i.test(cls)||/烈焰冲击|疾风连闪/.test(text);
-              if(hit&&!seen.get(f)){seen.set(f,1);const fire=!f.classList.contains('p2');fire(fire?'fire':'wind',fire?'烈焰冲击':'疾风连闪');}
+              if(hit&&!seen.get(f)){seen.set(f,1);const isFire=!f.classList.contains('p2');playSpecial(isFire?'fire':'wind',isFire?'烈焰冲击':'疾风连闪');}
               if(!hit)seen.set(f,0);
             }
             const obs=new MutationObserver(ms=>ms.forEach(m=>{if(m.target.classList?.contains('fighter'))check(m.target); if(m.target.parentElement?.classList?.contains('fighter'))check(m.target.parentElement)}));
@@ -94,7 +94,7 @@ jobs:
           })();
           </script>'''
 
-          s=s.replace('</head>',css+'</head>',1)
+          s=s.replace('</head>','<!-- SPECIAL_FX_V3 -->'+css+'</head>',1)
           s=s.replace('</body>',js+'</body>',1)
           p.write_text(s,encoding='utf-8')
           print('applied special fx v3')
