@@ -41,3 +41,5 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "feat: add V2.3 smarter AI and combo chains"
           git push
+
+# V2.3.3: add side-switching / anti-stuck patch in a follow-up workflow.
