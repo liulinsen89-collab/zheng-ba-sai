@@ -33,5 +33,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# Rebuild Pages from the CSS-only arena background source.
-# Re-deploy after V2.3.3 side-switch / anti-stuck movement.
+# Force redeploy of the latest V2.3.3 anti-stuck source.
+# Triggered by a real push to main so GitHub Pages rebuilds from current main.
