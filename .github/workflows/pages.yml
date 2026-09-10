@@ -25,61 +25,47 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Apply V1.9.1 visible combo system
+      - name: Apply V2.0 signature specials
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          css='''.combo{left:50%!important;bottom:24%!important;transform:translateX(-50%);font-size:clamp(18px,2.8vw,34px)!important;color:#f4d45b!important;text-shadow:3px 3px #000,0 0 10px #f4d45b!important;z-index:60!important}.combo.show{animation:comboIn .7s forwards!important}.combo-badge{position:absolute;z-index:65;pointer-events:none;font-weight:1000;font-size:clamp(16px,2.4vw,30px);font-style:italic;text-shadow:3px 3px #000;opacity:0;white-space:nowrap}.combo-badge.f1{color:#ff5148}.combo-badge.f2{color:#52b9ff}.combo-badge.show{animation:comboPop .65s ease-out forwards}@keyframes comboPop{0%{opacity:0;transform:translate(-50%,8px) scale(.7)}25%{opacity:1;transform:translate(-50%,0) scale(1.12)}100%{opacity:0;transform:translate(-50%,-28px) scale(1)}}.fighter.combo-hit .sprite{filter:drop-shadow(0 0 12px #fff) drop-shadow(0 6px 3px #0007)!important}'''
+          css=r'''
+          .special-burst{position:absolute;z-index:55;pointer-events:none;width:180px;height:180px;border-radius:50%;opacity:0;transform:translate(-50%,-50%) scale(.25);mix-blend-mode:screen}.special-burst.red{background:radial-gradient(circle,#fff 0 8%,#ffb347 12%,#ff3b30 28%,transparent 70%);filter:drop-shadow(0 0 18px #ff3b30)}.special-burst.blue{background:radial-gradient(circle,#fff 0 8%,#c9f5ff 12%,#38a8ff 30%,transparent 72%);filter:drop-shadow(0 0 18px #38a8ff)}.special-burst.go{animation:specBurst .65s steps(6) forwards}.special-ring{position:absolute;z-index:54;pointer-events:none;width:24px;height:24px;border:7px solid #fff;border-radius:50%;opacity:0;transform:translate(-50%,-50%)}.special-ring.go{animation:specRing .55s ease-out forwards}.special-label{position:absolute;z-index:70;pointer-events:none;font-weight:1000;font-size:clamp(15px,2.2vw,28px);opacity:0;transform:translate(-50%,0) scale(.7);text-shadow:3px 3px #000}.special-label.red{color:#ff4b3e}.special-label.blue{color:#55c8ff}.special-label.go{animation:specLabel .85s ease-out forwards}.special-flash{position:absolute;inset:0;z-index:52;pointer-events:none;background:#fff;opacity:0}.special-flash.go{animation:specFlash .18s steps(2)}
+          @keyframes specBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
+          @keyframes specRing{0%{opacity:1;width:24px;height:24px}100%{opacity:0;width:230px;height:230px}}
+          @keyframes specLabel{0%{opacity:0;transform:translate(-50%,0) scale(.7)}18%{opacity:1;transform:translate(-50%,0) scale(1.08)}100%{opacity:0;transform:translate(-50%,-22px) scale(1)}}
+          @keyframes specFlash{0%{opacity:0}35%{opacity:.72}100%{opacity:0}}
+          .fighter.special .sprite{filter:drop-shadow(0 0 14px #fff) drop-shadow(0 8px 4px #0008)!important}
+          '''
           s=s.replace('</style>',css+'</style>',1)
           js=r'''
           (function(){
-            const oldDecide=decide;
-            const chainState={1:{busy:false,index:0,seq:[]},2:{busy:false,index:0,seq:[]}};
-            const lastHp={1:A.hp,2:B.hp};
-            const hitWindow={1:0,2:0};
-            const comboCount={1:0,2:0};
-            const comboExpire={1:0,2:0};
-            function badge(f,n){
-              if(n<2)return;
-              const e=document.createElement('div');e.className='combo-badge '+(f.id===1?'f1':'f2');e.textContent=n+' HIT COMBO';
-              const r=node(f).getBoundingClientRect(),g=G.getBoundingClientRect();
-              e.style.left=((r.left+r.width/2-g.left)/g.width*100)+'%';
-              e.style.top=Math.max(8,(r.top-g.top)/g.height*100-10)+'%';
-              G.appendChild(e);requestAnimationFrame(()=>e.classList.add('show'));setTimeout(()=>e.remove(),700);
+            const game=document.querySelector('.game');
+            const originalBegin=begin;
+            const specialState={1:false,2:false};
+            function burst(f,e){
+              const n=node(f),r=n.getBoundingClientRect(),g=game.getBoundingClientRect();
+              const x=(r.left+r.width/2-g.left)/g.width*100, y=(r.top+r.height*.45-g.top)/g.height*100;
+              const side=f.id===1?'red':'blue';
+              const b=document.createElement('div');b.className='special-burst '+side+' go';b.style.left=x+'%';b.style.top=y+'%';game.appendChild(b);
+              const ring=document.createElement('div');ring.className='special-ring go';ring.style.left=x+'%';ring.style.top=y+'%';game.appendChild(ring);
+              const lab=document.createElement('div');lab.className='special-label '+side+' go';lab.textContent=(f.id===1?'赤焰 · 必杀技':'疾风 · 必杀技');lab.style.left=x+'%';lab.style.top=Math.max(10,y-13)+'%';game.appendChild(lab);
+              const fl=document.createElement('div');fl.className='special-flash go';game.appendChild(fl);
+              setTimeout(()=>{b.remove();ring.remove();lab.remove();fl.remove()},900);
             }
-            function startChain(f,e){
-              const st=chainState[f.id]; if(st.busy||f.action||f.stun>0||f.cool>0||f.hp<=0||e.hp<=0)return false;
-              const c=cfg[f.kind];
-              st.seq=f.kind==='power'?[c.atk[0],c.atk[1],c.atk[3]]:[c.atk[0],c.atk[2],c.atk[0]];
-              st.index=0;st.busy=true;
-              const next=()=>{
-                if(!running||f.hp<=0||e.hp<=0||st.index>=st.seq.length){st.busy=false;return}
-                const m=st.seq[st.index++];
-                const type=m===c.atk[0]?'attack':m===c.atk[1]?'heavy':m===c.atk[2]?'lightkick':'kick';
-                if(!begin(f,type,m)){st.busy=false;return}
-                const started=performance.now();
-                const wait=()=>{
-                  if(!running||f.hp<=0||e.hp<=0){st.busy=false;return}
-                  if(f.action){if(performance.now()-started>650){clearAction(f);setTimeout(next,90)}else requestAnimationFrame(wait)}
-                  else setTimeout(next,90);
-                };requestAnimationFrame(wait);
-              };next();return true;
-            }
-            decide=function(f,e){
-              if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;
-              const d=Math.abs(f.x-e.x);
-              if(d<=14 && d>=8 && Math.random()<(f.kind==='power'?.34:.30) && startChain(f,e))return;
-              return oldDecide(f,e);
+            begin=function(f,type,m){
+              const ok=originalBegin(f,type,m);
+              if(ok && type==='special') burst(f,f.id===1?B:A);
+              return ok;
             };
-            function hpCheck(){
-              const now=performance.now();
-              if(A.hp<lastHp[1]){comboCount[1]=now<comboExpire[1]?comboCount[1]+1:1;comboExpire[1]=now+1100;badge(A,comboCount[1]);A.node=node(A);A.node.classList.add('combo-hit');setTimeout(()=>A.node&&A.node.classList.remove('combo-hit'),160)}
-              if(B.hp<lastHp[2]){comboCount[2]=now<comboExpire[2]?comboCount[2]+1:1;comboExpire[2]=now+1100;badge(B,comboCount[2]);B.node=node(B);B.node.classList.add('combo-hit');setTimeout(()=>B.node&&B.node.classList.remove('combo-hit'),160)}
-              lastHp[1]=A.hp;lastHp[2]=B.hp;
-            }
-            setInterval(hpCheck,50);
+            const oldUpdate=update;
+            update=function(f,e){
+              oldUpdate(f,e);
+              if(f.action && f.action.type==='special' && !specialState[f.id]){specialState[f.id]=true}
+              if((!f.action || f.action.type!=='special') && specialState[f.id])specialState[f.id]=false;
+            };
           })();
           '''
           marker='})();</script>'
