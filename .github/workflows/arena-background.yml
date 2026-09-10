@@ -56,4 +56,5 @@ jobs:
           git commit -m 'feat: use uploaded martial arts arena as game background'
           git push
 
-# Trigger a fresh Pages deployment from the user-authored workflow update.
+# Pages deployment trigger: run after the generated source commit exists.
+# Background source marker: ARENA_BG_V1
