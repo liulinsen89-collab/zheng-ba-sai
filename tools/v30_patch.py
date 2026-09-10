@@ -1,0 +1,9 @@
+from pathlib import Path
+p=Path('index.html')
+s=p.read_text(encoding='utf-8')
+marker='<!-- V3_0_FULL_COMBAT_DIRECTOR -->'
+if marker in s:
+    raise SystemExit('V3.0 already installed')
+patch='''<!-- V3_0_FULL_COMBAT_DIRECTOR -->\n<script>\n(()=>{\nconst S={};const n=()=>performance.now();\nconst d=(a,b)=>Math.abs((a?.x||0)-(b?.x||0));\nconst atk=f=>(window.cfg&&window.cfg[f.kind]&&window.cfg[f.kind].atk)||['jab','heavy','kick','lightkick'];\nconst fighting=s=>['attack','att','heavy','kick','lightkick','special'].includes(s);\nfunction hit(f,e){if(!f||!e||f.hp<=0||e.hp<=0)return;f.cool=0;f.dodge=0;f.vx=0;if(typeof begin==='function')begin(f,'attack',atk(f)[0]);else f.state='attack';}\nfunction brain(f,e){if(!f||!e||f.hp<=0||e.hp<=0)return;const k=f===window.A?'a':'b',q=S[k]||(S[k]={x:f.x,still:0,dodge:0});const moved=Math.abs((f.x||0)-q.x)>1.5;q.x=f.x;q.still=moved?0:q.still+1;if(f.state==='dodge')q.dodge++;else if(fighting(f.state))q.dodge=0;const dist=d(f,e),low=f.hp/(f.maxHp||600)<.3,enemyLow=e.hp/(e.maxHp||600)<.35;if(dist>220){f.vx=(e.x>f.x?1:-1)*(f===window.B?1.35:1.15);if(q.still>10)f.vx*=1.6;if(q.dodge>=2){q.dodge=0;hit(f,e)}return;}if(dist<120){f.vx=0;if(q.dodge>=2||q.still>7||low||enemyLow){q.dodge=0;q.still=0;hit(f,e);return;}if(Math.random()<(f===window.A?.72:.58))hit(f,e);return;}f.vx=(e.x>f.x?1:-1)*(f===window.B?1.3:1.12);if(q.dodge>=2){q.dodge=0;hit(f,e)}else if(Math.random()<(f===window.A?.42:.3))hit(f,e);}\nfunction install(){if(!window.decide||window.decide.__v30)return false;const old=window.decide;const w=function(f,e){old(f,e);brain(f,e||(f===window.A?window.B:window.A));};w.__v30=true;window.decide=w;return true;}\nconst t=setInterval(()=>{if(install())clearInterval(t)},50);setInterval(()=>{if(window.A&&window.B){brain(window.A,window.B);brain(window.B,window.A)}},350);\n})();\n</script>\n'''
+s=s.replace('</body>',patch+'</body>') if '</body>' in s else s+patch
+p.write_text(s,encoding='utf-8')
