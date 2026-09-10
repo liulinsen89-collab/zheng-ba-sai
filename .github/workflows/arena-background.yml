@@ -1,0 +1,57 @@
+name: Apply Arena Background
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply uploaded arena background
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- ARENA_BG_V1 -->'
+
+          if marker not in s:
+              css = '''<style id="arena-bg-v1">
+          /* ARENA_BG_V1: use the user's uploaded martial-arts arena image as the battle background */
+          .game{background:#0b1220 linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.12)),url('./file_0000000095e48209a656a2b8cabe98f3.png') center center/cover no-repeat!important}
+          .scene.sky,.scene.moon,.scene.mountain,.scene.palace,.scene.waterfall,.scene.mist,.scene.cherry,.scene.lantern,.scene.banner,.scene.platform,.scene.floor{display:none!important}
+          </style>'''
+              s = s.replace('</head>', marker + css + '</head>', 1)
+
+          # Remove the earlier broken duplicate V3 special-FX script if two copies exist.
+          needle = '<script id="special-fx-v3-script">'
+          first = s.find(needle)
+          second = s.find(needle, first + len(needle)) if first >= 0 else -1
+          if first >= 0 and second >= 0:
+              end = s.find('</script>', first)
+              if end >= 0:
+                  s = s[:first] + s[end + len('</script>'):]
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit source change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet -- index.html; then
+            echo 'No source changes needed.'
+            exit 0
+          fi
+          git add index.html
+          git commit -m 'feat: use uploaded martial arts arena as game background'
+          git push
