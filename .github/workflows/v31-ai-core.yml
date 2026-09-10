@@ -1,0 +1,34 @@
+name: V3.1 AI Core Rebuild
+on:
+  push:
+    paths:
+      - 'tools/v31_ai_core.py'
+      - '.github/workflows/v31-ai-core.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply V3.1 AI core
+        run: python3 tools/v31_ai_core.py
+      - name: Commit source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "feat: rebuild V3.1 AI combat core"
+          git push || true
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
