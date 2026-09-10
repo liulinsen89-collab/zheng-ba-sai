@@ -1,0 +1,7 @@
+from pathlib import Path
+p=Path('index.html')
+s=p.read_text(encoding='utf-8')
+marker='<!-- V3_2_HARD_COMBAT_ARBITER -->'
+if marker in s: raise SystemExit(0)
+patch=r'''\n<!-- V3_2_HARD_COMBAT_ARBITER -->\n<script>\n(()=>{\nconst K='__v32',now=()=>performance.now(),live=new Set(['attack','att','heavy','kick','lightkick','special']);\nfunction force(f,n){if(!f||f.hp<=0)return;const a=(window.cfg&&window.cfg[f.kind]&&window.cfg[f.kind].atk)||['jab','heavy','kick','lightkick'];f.vx=0;f.dodge=0;f.cool=0;if(typeof begin==='function')begin(f,'attack',a[n%a.length]);else f.state='attack'}\nfunction tick(f,e){if(!f||!e||f.hp<=0||e.hp<=0)return;const q=f[K]||(f[K]={last:'',same:0,dodges:0,attacks:0,lastSwitch:now()}),st=f.state||'',dist=Math.abs((f.x||0)-(e.x||0));if(st===q.last)q.same++;else{q.last=st;q.same=0}if(st==='dodge')q.dodges++;else if(live.has(st))q.dodges=0;if(live.has(st))q.attacks++;\nif(dist<125&&(q.dodges>=2||q.same>=8)){q.dodges=0;q.same=0;q.lastSwitch=now();force(f,f===window.A?q.attacks+2:q.attacks+1);return}\nif(f===window.A&&live.has(st)&&q.same>=10){q.same=0;q.lastSwitch=now();force(f,q.attacks+3);return}\nif(f===window.B&&st==='dodge'&&q.same>=5){q.same=0;q.dodges=0;q.lastSwitch=now();force(f,q.attacks+1);return}\nif(now()-q.lastSwitch>2600&&(st==='idle'||st==='dodge')){q.lastSwitch=now();q.same=0;q.dodges=0;force(f,q.attacks+2)}}\nsetInterval(()=>{if(window.A&&window.B){tick(window.A,window.B);tick(window.B,window.A)}},180);\n})();\n</script>\n'''
+p.write_text(s.rstrip()+patch+'\n',encoding='utf-8')
