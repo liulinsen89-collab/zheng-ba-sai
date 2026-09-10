@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build V3.3 real AI arbiter
+      - name: Build V3.3 real combat arbiter
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -32,54 +32,62 @@ jobs:
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
 
-          # The previous V3.2 layer incorrectly relied on window.A/window.B/window.cfg.
-          # Top-level const/let declarations are lexical bindings, not window properties.
-          # Expose the actual game objects so the arbiter operates on the real fighters.
+          # Expose the real game objects. The original source uses
+          # window.A=make(...),B=make(...), so B is not reliably exposed
+          # through the same mechanism used by the earlier V3.2 layer.
           s=re.sub(r'\bconst\s+cfg\s*=', 'window.cfg=', s, count=1)
           s=re.sub(r'\blet\s+cfg\s*=', 'window.cfg=', s, count=1)
+          s=re.sub(r'window\.A\s*=\s*([^;]+),\s*B\s*=', r'window.A=\1,window.B=', s, count=1)
           s=re.sub(r'\bconst\s+A\s*=', 'window.A=', s, count=1)
           s=re.sub(r'\blet\s+A\s*=', 'window.A=', s, count=1)
           s=re.sub(r'\bconst\s+B\s*=', 'window.B=', s, count=1)
           s=re.sub(r'\blet\s+B\s*=', 'window.B=', s, count=1)
 
-          marker='__v33_real_arbiter'
-          patch=r'''<script id="__v33_real_arbiter">
+          marker='__v33_real_combat_arbiter'
+          patch=r'''<script id="__v33_real_combat_arbiter">
           (()=>{
             document.title='争霸赛 · V3.3 AI Core';
-            const T=performance.now.bind(performance), LIVE=new Set(['attack','att','heavy','kick','lightkick','special']);
-            const S={A:{last:'',same:0,dodge:0,attacks:0,switchAt:0},B:{last:'',same:0,dodge:0,attacks:0,switchAt:0}};
-            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            const T=()=>performance.now();
+            const LIVE=new Set(['attack','att','heavy','kick','lightkick','special']);
+            const S={A:{lastState:'',lastMove:'',moveSame:0,dodgeSame:0,attacks:0,switchAt:0},B:{lastState:'',lastMove:'',moveSame:0,dodgeSame:0,attacks:0,switchAt:0}};
             function arr(f){return (window.cfg&&window.cfg[f.kind]&&window.cfg[f.kind].atk)||['jab','heavy','kick','lightkick']}
-            function attack(f,e,idx){
+            function forceAttack(f,e,key){
               if(!f||!e||f.hp<=0||e.hp<=0||typeof begin!=='function')return;
-              const a=arr(f), name=a[Math.abs(idx)%a.length];
-              f.vx=0; f.dodge=0; f.cool=0;
-              begin(f,'attack',name);
+              const a=arr(f), idx=(S[key].attacks + (key==='A'?2:3))%a.length;
+              f.action=null; f.cool=0; f.dodge=0; f.guard=0; f.jump=0; f.state='idle';
+              begin(f,'attack',a[idx]);
+              S[key].attacks++;
+              S[key].switchAt=T();
             }
             function tick(f,e,key){
               if(!f||!e||f.hp<=0||e.hp<=0)return;
-              const q=S[key], st=f.state||'', dist=Math.abs((f.x||0)-(e.x||0));
-              if(st===q.last)q.same++; else {q.last=st;q.same=0}
-              if(st==='dodge')q.dodge++; else if(LIVE.has(st))q.dodge=0;
-              if(LIVE.has(st))q.attacks++;
+              const q=S[key], st=f.state||'', act=f.action, move=act&&act.n||'';
+              const dist=Math.abs((f.x||0)-(e.x||0));
 
-              // Hard anti-loop rules operate on the actual fighter objects.
-              if(dist<135 && q.dodge>=2){q.dodge=0;q.same=0;q.switchAt=T();attack(f,e,q.attacks+2);return}
-              if(dist<135 && q.same>=6){q.same=0;q.switchAt=T();attack(f,e,q.attacks+(key==='A'?3:1));return}
-              if(dist<190 && st==='idle' && q.same>=5){q.same=0;attack(f,e,q.attacks+1);return}
+              if(st===q.lastState) q.moveSame++; else {q.lastState=st;q.moveSame=0}
+              if(st==='dodge') q.dodgeSame++; else if(st!=='dodge') q.dodgeSame=0;
+              if(move===q.lastMove) q.moveSame++; else if(move){q.lastMove=move;q.moveSame=1}
+
+              // Never interrupt an active animation. Decide immediately after it ends.
+              if(act) return;
+
+              // Two consecutive dodge decisions at close range -> attack next.
+              if(dist<145 && q.dodgeSame>=2){q.dodgeSame=0;q.moveSame=0;forceAttack(f,e,key);return}
+
+              // Three repeats of the same move -> rotate the attack immediately after recovery.
+              if(dist<180 && q.moveSame>=3){q.moveSame=0;forceAttack(f,e,key);return}
+
+              // No action for too long -> attack instead of stalling.
+              if(dist<190 && (st==='idle'||st==='dodge') && T()-q.switchAt>900){q.dodgeSame=0;q.moveSame=0;forceAttack(f,e,key);return}
+
+              // Long range: pursue. Close range: stop backing away and let the normal AI choose.
               if(dist>190){
                 const dir=e.x>f.x?1:-1;
-                f.vx=dir*(key==='B'?1.45:1.18);
-                if(q.same>=8)f.vx*=1.7;
-              }
-              if(T()-q.switchAt>2200 && (st==='idle'||st==='dodge')){
-                q.same=0;q.dodge=0;q.switchAt=T();attack(f,e,q.attacks+2);
+                f.vx=dir*(key==='B'?1.55:1.25);
+                if(q.moveSame>7)f.vx*=1.35;
               }
             }
-            const boot=setInterval(()=>{
-              if(window.A&&window.B&&window.cfg){clearInterval(boot);}
-            },20);
-            setInterval(()=>{if(window.A&&window.B){tick(window.A,window.B,'A');tick(window.B,window.A,'B')}},180);
+            setInterval(()=>{if(window.A&&window.B){tick(window.A,window.B,'A');tick(window.B,window.A,'B')}},120);
           })();
           </script>'''
           if marker not in s:
@@ -97,4 +105,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# V3.3 real AI arbiter deployment
+# V3.3 real combat arbiter deployment
