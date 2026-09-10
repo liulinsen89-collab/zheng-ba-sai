@@ -33,7 +33,7 @@ jobs:
           s=p.read_text(encoding='utf-8')
           css='''.combo{left:50%!important;bottom:25%!important;transform:translateX(-50%);font-size:clamp(16px,2.4vw,30px)!important;color:#f4d45b!important;text-shadow:3px 3px #000!important}.combo.show{animation:comboIn .7s forwards!important}.fighter.combo-hit .sprite{filter:drop-shadow(0 0 10px #fff) drop-shadow(0 6px 3px #0007)!important}'''
           s=s.replace('</style>',css+'</style>',1)
-          combo_js=r'''<script>
+          combo_js=r'''
           (function(){
             const oldDecide=decide;
             const chainTimer={1:null,2:null};
@@ -62,11 +62,11 @@ jobs:
               return oldDecide(f,e);
             };
           })();
-          </script>'''
+          '''
           marker='})();</script>'
           if marker not in s:
               raise SystemExit('game script marker not found')
-          s=s.replace(marker,combo_js+'<script>(function(){})();</script>'+marker,1)
+          s=s.replace(marker,combo_js+marker,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Upload artifact
