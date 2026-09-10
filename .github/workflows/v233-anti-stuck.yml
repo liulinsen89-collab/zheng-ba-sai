@@ -15,14 +15,17 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('index.html'); s=p.read_text(encoding='utf-8')
           if 'V2_3_3_SIDE_SWITCH' in s:
               print('V2.3.3 already applied'); raise SystemExit(0)
           new_decide="""function decide(f,e){if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;const q=gap(),c=cfg[f.kind],style=c.style,low=f.hp<240,enemyLow=e.hp<180,incoming=!!e.action&&e.action.t<e.action.max,enemyWinding=!!e.action&&e.action.t<e.action.w;f.stuck=q<14?(f.stuck||0)+.016:0;if(q<14&&f.stuck>.72&&!f.sideSwitch){f.sideSwitch=.28;f.stuck=0;f.state='dodge';visual(f,'dodge');f.x=Math.max(7,Math.min(93,f.x+f.face*7.2));f.face=f.x<e.x?1:-1;f.cool=.34;return}if(incoming&&q<27){if(enemyWinding&&style==='evasive'&&Math.random()<.34){f.dodge=.30;f.state='dodge';f.x=Math.max(8,Math.min(92,f.x+f.face*4.2));visual(f,'dodge');f.cool=.42;return}const guardChance=style==='aggressive'?(low?.20:.08):(.24+(low?.12:0));if(Math.random()<guardChance){f.guard=style==='aggressive'?.24:.42;f.state='guard';visual(f,'guard');f.cool=.30;return}if(style==='evasive'&&Math.random()<.24){f.dodge=.30;f.state='dodge';f.x=Math.max(8,Math.min(92,f.x-f.face*(low?4.5:3.5)));visual(f,'dodge');f.cool=.46;return}}if(style==='evasive'){if(q<14){f.state='approach';f.x-=f.face*(low?1.35:1.05);return}if(q>24){f.state='approach';f.x+=f.face*(low?1.10:1.35);return}}else if(q>c.reach+1){f.state='approach';f.x+=f.face*(low?c.speed*.92:c.speed*1.12);return}if(f.en>=100&&q<c.special[2]&&(enemyLow||q<20||Math.random()<.22)){f.en=0;begin(f,'special',c.special);return}if(style==='evasive'&&low&&Math.random()<.28){f.jump=.42;f.state='jump';visual(f,'jump');f.cool=.52;return}if(f.combo>0&&f.comboT>0){const arr=c.atk,chain=[arr[0],arr[0],arr[1],arr[2],arr[3]],m=chain[Math.min(f.combo,chain.length-1)],type=m===arr[0]?'attack':m===arr[1]?'heavy':m===arr[2]?'lightkick':'kick';if(Math.random()<(style==='aggressive'?.88:.72)){begin(f,type,m);return}}const arr=c.atk;let r=Math.random();if(style==='aggressive')r=Math.min(1,r+.13);const m=style==='aggressive'?(r<.30?arr[0]:r<.60?arr[1]:r<.80?arr[2]:arr[3]):(r<.46?arr[0]:r<.68?arr[2]:r<.86?arr[1]:arr[3]);const type=m===arr[0]?'attack':m===arr[1]?'heavy':m===arr[2]?'lightkick':'kick';begin(f,type,m)}"""
-          s,n=re.subn(r'function decide\(f,e\)\{.*?\}function update\(f,e,dt\)\{',new_decide+"function update(f,e,dt){if(f.sideSwitch>0){f.sideSwitch=Math.max(0,f.sideSwitch-dt);visual(f,'dodge');return}",s,count=1)
-          if n!=1: raise SystemExit('decide/update not found')
-          s=s.replace('combo:0,comboT:0}}','combo:0,comboT:0,stuck:0,sideSwitch:0}}',1)
+          start=s.find('function decide(f,e){')
+          end=s.find('function update(f,e,dt){',start)
+          if start<0 or end<0: raise SystemExit(f'decide/update not found start={start} end={end}')
+          s=s[:start]+new_decide+'function update(f,e,dt){if(f.sideSwitch>0){f.sideSwitch=Math.max(0,f.sideSwitch-dt);visual(f,\'dodge\');return}'+s[end+len('function update(f,e,dt){'):]
+          marker='combo:0,comboT:0'
+          if marker in s and 'stuck:0,sideSwitch:0' not in s:
+              s=s.replace(marker,marker+',stuck:0,sideSwitch:0',1)
           s=s.replace('<!-- V2_3_AI_COMBO -->','<!-- V2_3_AI_COMBO -->\n<!-- V2_3_3_SIDE_SWITCH -->',1)
           p.write_text(s,encoding='utf-8')
           PY
