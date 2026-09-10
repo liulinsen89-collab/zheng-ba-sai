@@ -37,3 +37,6 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "feat: finalize V2.3.3 side-switch anti-stuck movement"
           git push
+
+# Force a fresh run after correcting the previous deployment attempt.
+# The intended behavior is brief crossing, then automatic side-switch and recovery.
