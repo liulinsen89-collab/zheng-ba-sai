@@ -1,0 +1,44 @@
+name: V3.0.1 疾风贴脸闪避修复并部署
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/v301_patch.py'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: v301-deploy
+  cancel-in-progress: true
+
+jobs:
+  fix-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Patch game
+        run: python tools/v301_patch.py
+      - name: Commit source fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'fix: V3.0.1 stop 疾风 close-range dodge loop'
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Push source fix
+        run: git push origin HEAD:main
