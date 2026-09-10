@@ -22,12 +22,17 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
           marker = '<!-- ARENA_BG_V1 -->'
-          image = '/zheng-ba-sai/file_0000000095e48209a656a2b8cabe98f3.png'
+          image = 'https://raw.githubusercontent.com/liulinsen89-collab/zheng-ba-sai/main/file_0000000095e48209a656a2b8cabe98f3.png'
 
-          # Always normalize the background URL to the GitHub Pages project path.
-          # This avoids relative-URL resolution issues on the Pages site.
-          s = s.replace("url('./file_0000000095e48209a656a2b8cabe98f3.png')", f"url('{image}')")
-          s = s.replace('url("./file_0000000095e48209a656a2b8cabe98f3.png")', f'url("{image}")')
+          # Use the raw GitHub image URL so the Pages site does not depend on
+          # project-path resolution or Pages asset handling for this PNG.
+          for old in [
+              "url('./file_0000000095e48209a656a2b8cabe98f3.png')",
+              'url("./file_0000000095e48209a656a2b8cabe98f3.png")',
+              "url('/zheng-ba-sai/file_0000000095e48209a656a2b8cabe98f3.png')",
+              'url("/zheng-ba-sai/file_0000000095e48209a656a2b8cabe98f3.png")'
+          ]:
+              s = s.replace(old, f"url('{image}')")
 
           if marker not in s:
               css = f'''<style id="arena-bg-v1">
@@ -36,15 +41,6 @@ jobs:
           .scene.sky,.scene.moon,.scene.mountain,.scene.palace,.scene.waterfall,.scene.mist,.scene.cherry,.scene.lantern,.scene.banner,.scene.platform,.scene.floor{{display:none!important}}
           </style>'''
               s = s.replace('</head>', marker + css + '</head>', 1)
-
-          # Remove the earlier broken duplicate V3 special-FX script if two copies exist.
-          needle = '<script id="special-fx-v3-script">'
-          first = s.find(needle)
-          second = s.find(needle, first + len(needle)) if first >= 0 else -1
-          if first >= 0 and second >= 0:
-              end = s.find('</script>', first)
-              if end >= 0:
-                  s = s[:first] + s[end + len('</script>'):]
 
           p.write_text(s, encoding='utf-8')
           PY
@@ -58,7 +54,7 @@ jobs:
             exit 0
           fi
           git add index.html
-          git commit -m 'fix: use absolute Pages path for arena background'
+          git commit -m 'fix: load arena background from raw GitHub asset'
           git push
 
-# Background source marker: ARENA_BG_V2
+# Background source marker: ARENA_BG_V3
