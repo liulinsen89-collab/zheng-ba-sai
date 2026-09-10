@@ -73,6 +73,50 @@ jobs:
           s=s.replace(marker,js+marker,1)
           p.write_text(s,encoding='utf-8')
           PY
+      - name: Balance HP and force special usage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          patch=r'''
+          <script>
+          (function(){
+            const HP_MAX=300;
+            A.hp=HP_MAX; B.hp=HP_MAX;
+            A.maxHp=HP_MAX; B.maxHp=HP_MAX;
+            const baseRender=render;
+            render=function(){
+              baseRender();
+              const a=document.querySelector('.fighter.p1 .hp'),b=document.querySelector('.fighter.p2 .hp');
+              if(a)a.style.width=Math.max(0,Math.min(100,A.hp/HP_MAX*100))+'%';
+              if(b)b.style.width=Math.max(0,Math.min(100,B.hp/HP_MAX*100))+'%';
+            };
+            const baseReset=resetF;
+            resetF=function(f,x){baseReset(f,x);f.hp=HP_MAX;f.maxHp=HP_MAX;};
+            const baseDecide=decide;
+            decide=function(f,e){
+              if(f.energy>=80 && (!f.action || f.action.type!=='special')){
+                const ok=begin(f,'special');
+                if(ok)return;
+              }
+              return baseDecide(f,e);
+            };
+            const oldStart=start;
+            start=function(){
+              oldStart();
+              A.hp=HP_MAX;B.hp=HP_MAX;A.maxHp=HP_MAX;B.maxHp=HP_MAX;
+              render();
+            };
+            render();
+          })();
+          </script>
+          '''
+          marker='</body>'
+          if marker not in s: raise SystemExit('body marker not found')
+          s=s.replace(marker,patch+marker,1)
+          p.write_text(s,encoding='utf-8')
+          PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
