@@ -31,61 +31,16 @@ jobs:
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{z-index:55;display:block;position:absolute;pointer-events:none;font-weight:1000;font-size:clamp(10px,1.35vw,17px);white-space:nowrap;text-shadow:2px 2px #000;animation:callout .43s ease-out forwards}.action-callout.f1{color:#ff3b30!important;text-shadow:2px 2px #000,0 0 5px #ff3b30!important}.action-callout.f2{color:#38a8ff!important;text-shadow:2px 2px #000,0 0 5px #38a8ff!important}.fighter .scarf{display:none!important}.fighter .boot{bottom:11px!important;z-index:4!important}.fighter .boot.l{left:43px!important}.fighter .boot.r{left:98px!important}.kick .shin.r,.kick .boot.r{animation:frontKick .30s steps(4);transform-origin:50% 100%}.lightkick .shin.r,.lightkick .boot.r{animation:lightKick .24s steps(4);transform-origin:50% 100%}.jump .shin.l{animation:airLL .46s}.jump .shin.r{animation:airLR .46s}.jump .boot.l{animation:airLL .46s}.jump .boot.r{animation:airLR .46s}'''
+          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{z-index:55;display:block;position:absolute;pointer-events:none;font-weight:1000;font-size:clamp(10px,1.35vw,17px);white-space:nowrap;text-shadow:2px 2px #000;animation:callout .43s ease-out forwards}.action-callout.f1{color:#ff3b30!important;text-shadow:2px 2px #000,0 0 5px #ff3b30!important}.action-callout.f2{color:#38a8ff!important;text-shadow:2px 2px #000,0 0 5px #38a8ff!important}.fighter .scarf{display:none!important}.fighter .boot{bottom:11px!important;z-index:4!important}.fighter .boot.l{left:43px!important}.fighter .boot.r{left:98px!important}'''
           s=s.replace("</style>",css+"</style>",1)
-          s=s.replace('style="left:21%"','style="left:3%"',1)
-          s=s.replace('style="left:69%"','style="left:87%"',1)
-          s=s.replace("const A=make(1,21,'power'),B=make(2,69,'speed')","const A=make(1,3,'power'),B=make(2,87,'speed')",1)
-          s=s.replace("resetF(A,21);resetF(B,69)","resetF(A,3);resetF(B,87)",1)
-          s=s.replace('reach:17,atk:', 'reach:11,atk:',1)
-          old_strike="""function strike(f,e){const a=f.action;if(!a||a.hit||e.hp<=0)return;if(e.dodge>0||e.jump>0||gap()>a.r)return;a.hit=true;const blocked=e.guard>0,dmg=blocked?Math.max(1,Math.round(a.d*.18)):a.d;e.hp=Math.max(0,e.hp-dmg);e.stun=blocked?.08:(a.d>=20?.32:.20);e.state=e.hp<=0?'ko':blocked?'guard':'hurt';if(!blocked)visual(e,'hurt');else visual(e,'guard');f.en=Math.min(100,f.en+(blocked?2:dmg*1.35));f.combo++;f.comboT=1.05;e.combo=0;e.comboT=0;burst(e.x,48,a.d>=20);effect(e.x,53,blocked?'GUARD':'-'+dmg);if(a.n==='烈焰冲击'||a.n==='疾风连闪')burst(e.x,46,true);shake=Math.max(shake,a.d>=20?.18:.09);if(a.d>=20)time=Math.max(0,time-.12);showCombo(f);clearAction(f)}"""
-          new_strike="""function strike(f,e){const a=f.action;if(!a||a.hit||e.hp<=0)return;const dist=Math.abs(f.x-e.x);const reach=Math.min(a.r,11.5);if(e.dodge>0||e.jump>0||dist>reach)return;const dir=e.x>=f.x?1:-1;if(f.face!==dir&&dist>4)return;a.hit=true;const blocked=e.guard>0,dmg=blocked?Math.max(1,Math.round(a.d*.18)):Math.max(1,a.d);e.hp=Math.max(0,e.hp-dmg);e.stun=blocked?.08:(a.d>=20?.32:.20);e.state=e.hp<=0?'ko':blocked?'guard':'hurt';if(!blocked)visual(e,'hurt');else visual(e,'guard');f.en=Math.min(100,f.en+(blocked?2:dmg*1.35));f.combo++;f.comboT=1.05;e.combo=0;e.comboT=0;f.chain=(f.chain||0)+1;if(f.chain>=3)f.chain=0;burst(e.x,48,a.d>=20);effect(e.x,53,blocked?'GUARD':'-'+dmg);if(a.n==='烈焰冲击'||a.n==='疾风连闪')burst(e.x,46,true);shake=Math.max(shake,a.d>=20?.18:.09);if(a.d>=20)time=Math.max(0,time-.12);showCombo(f);clearAction(f)}"""
-          if old_strike not in s: raise SystemExit('strike function not found')
-          s=s.replace(old_strike,new_strike,1)
-          # Keep the opening formation visible for a moment before either AI moves.
-          s=s.replace("let running=false,time=99,last=0,raf=0,fxs=[],shake=0;","let running=false,time=99,last=0,raf=0,fxs=[],shake=0,matchStart=0;",1)
-          s=s.replace("function decide(f,e){if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;", "function decide(f,e){if(performance.now()-matchStart<1000)return;if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;",1)
-          s=s.replace("resetF(A,3);resetF(B,87);lastState={1:'idle',2:'idle'};time=99;last=performance.now();", "resetF(A,3);resetF(B,87);lastState={1:'idle',2:'idle'};time=99;matchStart=performance.now();last=matchStart;",1)
-          # Replace the old fixed-position callout function with one anchored to the fighter's real visual box.
-          old_callout="""function callout(f){if(!running||f.hp<=0)return;const label=names[f.state]||'';if(!label||['idle','approach','hurt','ko'].includes(f.state))return;const e=document.createElement('div');e.className='action-callout '+(f.id===1?'f1':'f2');e.textContent=label;e.style.left=(f.x+(f.id===1?5:-5))+'%';e.style.top='52%';G.appendChild(e);setTimeout(()=>e.remove(),450)}"""
-          new_callout="""function callout(f){if(!running||f.hp<=0)return;const label=names[f.state]||'';if(!label||['idle','approach','hurt','ko'].includes(f.state))return;const e=document.createElement('div');e.className='action-callout '+(f.id===1?'f1':'f2');e.textContent=label;G.appendChild(e);const n=node(f);const gr=G.getBoundingClientRect();const fr=n.getBoundingClientRect();e.style.left=(fr.left-gr.left+fr.width/2)+'px';e.style.top=Math.max(70,fr.top-gr.top-28)+'px';const born=performance.now();const follow=()=>{if(!e.isConnected)return;const now=performance.now();const r=n.getBoundingClientRect();e.style.left=(r.left-gr.left+r.width/2)+'px';e.style.top=Math.max(70,r.top-gr.top-28)+'px';if(now-born<450)requestAnimationFrame(follow)};requestAnimationFrame(follow);setTimeout(()=>e.remove(),450)}"""
-          if old_callout not in s: raise SystemExit('callout function not found')
-          s=s.replace(old_callout,new_callout,1)
-          personality="""
-          // V1.8: recognizable personalities plus short attack chains.
-          decide=function(f,e){
-            if(performance.now()-matchStart<1000)return;
-            if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;
-            const q=gap(),c=cfg[f.kind],aggressive=f.kind==='power';
-            const incoming=['attack','heavy','lightkick','kick','special'].includes(e.state);
-            if(aggressive){
-              if(q>c.reach){f.state='approach';f.x+=f.face*c.speed*1.18;return}
-              if(q<8.8){f.state='approach';f.x-=f.face*.42;return}
-              if(incoming&&q<13&&Math.random()<.10){f.guard=.30;f.state='guard';visual(f,'guard');f.cool=.32;return}
-              if(f.en>=100&&q<=11.5&&Math.random()<.62){f.en=0;begin(f,'special',c.special);return}
-              const chain=f.chain||0;
-              const m=chain===0?c.atk[0]:chain===1?c.atk[1]:(Math.random()<.58?c.atk[3]:c.atk[2]);
-              const type=m===c.atk[0]?'attack':m===c.atk[1]?'heavy':m===c.atk[2]?'lightkick':'kick';
-              begin(f,type,m);return;
-            }
-            if(q<10.5){
-              if(Math.random()<.34){f.dodge=.30;f.state='dodge';f.x=Math.max(7,Math.min(93,f.x+f.face*3.8));visual(f,'dodge');f.cool=.58;return}
-              f.state='approach';f.x-=f.face*.55;return
-            }
-            if(q>14.5){f.state='approach';f.x+=f.face*c.speed*.92;return}
-            if(incoming&&q<16){
-              if(Math.random()<.30){f.dodge=.30;f.state='dodge';f.x=Math.max(7,Math.min(93,f.x+f.face*3.2));visual(f,'dodge');f.cool=.60;return}
-              if(Math.random()<.18){f.guard=.40;f.state='guard';visual(f,'guard');f.cool=.36;return}
-            }
-            if(f.en>=100&&q<=12&&Math.random()<.48){f.en=0;begin(f,'special',c.special);return}
-            const m=Math.random()<.48?c.atk[0]:Math.random()<.62?c.atk[2]:Math.random()<.72?c.atk[1]:c.atk[3];
-            const type=m===c.atk[0]?'attack':m===c.atk[1]?'heavy':m===c.atk[2]?'lightkick':'kick';
-            begin(f,type,m);
-          };
-          """
-          marker='})();</script>'
-          if marker not in s: raise SystemExit('script end marker not found')
-          s=s.replace(marker,personality+'})();</script>',1)
+          # Safe visual spawn positions: the fighters are scaled, so do not use the extreme 3/87% edges.
+          s=s.replace('style="left:21%"','style="left:6%"',1)
+          s=s.replace('style="left:69%"','style="left:76%"',1)
+          s=s.replace("const A=make(1,21,'power'),B=make(2,69,'speed')","const A=make(1,6,'power'),B=make(2,76,'speed')",1)
+          s=s.replace("resetF(A,21);resetF(B,69)","resetF(A,6);resetF(B,76)",1)
+          # Hold the actual DOM positions for the opening formation so the player can clearly see both spawn points.
+          boot_js='''<script>(function(){const a=document.querySelector('.fighter.p1'),b=document.querySelector('.fighter.p2');if(!a||!b)return;const until=performance.now()+1800;function lock(){a.style.left='6%';b.style.left='76%';if(performance.now()<until)requestAnimationFrame(lock)}lock()})();</script>'''
+          s=s.replace('</body>',boot_js+'</body>',1)
           p.write_text(s,encoding="utf-8")
           PY
       - name: Upload artifact
