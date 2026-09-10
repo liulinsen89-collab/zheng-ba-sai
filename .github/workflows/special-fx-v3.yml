@@ -1,0 +1,109 @@
+name: Special FX V3
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  enhance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add strong character-specific special effects
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='SPECIAL_FX_V3'
+          if marker in s:
+              print('already applied')
+              raise SystemExit(0)
+
+          css=r'''<style id="special-fx-v3">
+          .sfv3-layer{position:absolute;inset:0;z-index:80;pointer-events:none;overflow:hidden;opacity:0}
+          .sfv3-layer.show{opacity:1}
+          .sfv3-flash{position:absolute;inset:-20%;opacity:0;mix-blend-mode:screen}
+          .sfv3-fire .sfv3-flash{background:radial-gradient(circle at 50% 50%,#fff 0 4%,#ffd36b 10%,#ff5a00 28%,#d40018 48%,transparent 72%);animation:sfv3FireFlash .34s ease-out}
+          .sfv3-wind .sfv3-flash{background:radial-gradient(circle at 50% 50%,#fff 0 4%,#bff7ff 11%,#28cfff 30%,#176cff 50%,transparent 74%);animation:sfv3WindFlash .34s ease-out}
+          .sfv3-core{position:absolute;left:50%;top:57%;width:110px;height:110px;border-radius:50%;transform:translate(-50%,-50%) scale(.15);opacity:0}
+          .sfv3-fire .sfv3-core{background:radial-gradient(circle,#fff 0 9%,#ffe38a 16%,#ff8a00 34%,#f21d16 55%,transparent 72%);box-shadow:0 0 22px #ffdc66,0 0 60px #ff5a00,0 0 130px #e40019;animation:sfv3Core .55s cubic-bezier(.12,.8,.2,1)}
+          .sfv3-wind .sfv3-core{background:radial-gradient(circle,#fff 0 8%,#c9fbff 17%,#36dfff 36%,#1680ff 58%,transparent 74%);box-shadow:0 0 24px #c9fbff,0 0 70px #24cfff,0 0 140px #176cff;animation:sfv3Core .55s cubic-bezier(.12,.8,.2,1)}
+          .sfv3-ring{position:absolute;left:50%;top:57%;width:70px;height:70px;border:8px solid #fff;border-radius:50%;transform:translate(-50%,-50%) scale(.1);opacity:0}
+          .sfv3-fire .sfv3-ring{border-color:#ff9a00;box-shadow:0 0 18px #fff,0 0 45px #ff4d00,0 0 90px #e40019;animation:sfv3Ring .62s ease-out}
+          .sfv3-wind .sfv3-ring{border-color:#9ff7ff;box-shadow:0 0 18px #fff,0 0 45px #1bd8ff,0 0 90px #176cff;animation:sfv3Ring .62s ease-out}
+          .sfv3-burst{position:absolute;left:50%;top:57%;width:10px;height:10px;transform:translate(-50%,-50%);opacity:0}
+          .sfv3-burst i{position:absolute;left:0;top:0;width:5px;height:70px;border-radius:6px;transform-origin:50% 100%}
+          .sfv3-fire .sfv3-burst i{background:linear-gradient(#fff,#ffd24d,#ff3b00,transparent);box-shadow:0 0 12px #ff6a00}
+          .sfv3-wind .sfv3-burst i{background:linear-gradient(#fff,#aafaff,#168cff,transparent);box-shadow:0 0 12px #2bdcff}
+          .sfv3-burst i:nth-child(1){transform:rotate(0deg)}.sfv3-burst i:nth-child(2){transform:rotate(45deg)}.sfv3-burst i:nth-child(3){transform:rotate(90deg)}.sfv3-burst i:nth-child(4){transform:rotate(135deg)}.sfv3-burst i:nth-child(5){transform:rotate(180deg)}.sfv3-burst i:nth-child(6){transform:rotate(225deg)}.sfv3-burst i:nth-child(7){transform:rotate(270deg)}.sfv3-burst i:nth-child(8){transform:rotate(315deg)}
+          .sfv3-show .sfv3-burst{animation:sfv3Burst .52s ease-out}
+          .sfv3-particle{position:absolute;width:8px;height:8px;border-radius:50%;left:50%;top:57%;opacity:0}
+          .sfv3-fire .sfv3-particle{background:#ffd34d;box-shadow:0 0 12px #ff5a00,0 0 24px #ff1d00}
+          .sfv3-wind .sfv3-particle{background:#c9fbff;box-shadow:0 0 12px #20dcff,0 0 24px #176cff}
+          .sfv3-title{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%) scale(.5);font-size:clamp(28px,6vw,78px);font-weight:1000;letter-spacing:.08em;white-space:nowrap;color:#fff;text-shadow:0 0 8px #fff,4px 4px 0 #05070d,0 0 35px currentColor;opacity:0}
+          .sfv3-fire .sfv3-title{color:#ffb22e;text-shadow:0 0 10px #fff,4px 4px 0 #4b0800,0 0 42px #ff3b00}
+          .sfv3-wind .sfv3-title{color:#8defff;text-shadow:0 0 10px #fff,4px 4px 0 #06234b,0 0 42px #168cff}
+          .sfv3-show .sfv3-title{animation:sfv3Title .7s cubic-bezier(.12,.85,.2,1) forwards}
+          .sfv3-shake{animation:sfv3Shake .32s steps(8)}
+          @keyframes sfv3FireFlash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+          @keyframes sfv3WindFlash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+          @keyframes sfv3Core{0%{opacity:0;transform:translate(-50%,-50%) scale(.15)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(4.8)}}
+          @keyframes sfv3Ring{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(8)}}
+          @keyframes sfv3Burst{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(3.2)}}
+          @keyframes sfv3Title{0%{opacity:0;transform:translate(-50%,-50%) scale(.5) skewX(-12deg)}22%{opacity:1;transform:translate(-50%,-50%) scale(1.12) skewX(-12deg)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25) skewX(-12deg)}}
+          @keyframes sfv3Shake{0%,100%{transform:translate(0)}12%{transform:translate(-7px,3px)}25%{transform:translate(6px,-4px)}38%{transform:translate(-5px,-3px)}50%{transform:translate(6px,4px)}62%{transform:translate(-4px,2px)}75%{transform:translate(4px,-2px)}88%{transform:translate(-2px,1px)}}
+          </style>'''
+
+          js=r'''<script id="special-fx-v3-script">
+          (()=>{
+            const game=document.querySelector('.game'); if(!game)return;
+            const layer=document.createElement('div'); layer.className='sfv3-layer';
+            layer.innerHTML='<div class="sfv3-flash"></div><div class="sfv3-core"></div><div class="sfv3-ring"></div><div class="sfv3-burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sfv3-title"></div>';
+            for(let i=0;i<18;i++){const p=document.createElement('b');p.className='sfv3-particle';layer.appendChild(p)}
+            game.appendChild(layer);
+            let last=0, active=false;
+            function fire(kind,name){
+              const now=performance.now(); if(now-last<900||active)return; last=now; active=true;
+              layer.className='sfv3-layer '+(kind==='fire'?'sfv3-fire':'sfv3-wind')+' sfv3-show';
+              layer.querySelector('.sfv3-title').textContent=name|| (kind==='fire'?'烈焰冲击':'疾风连闪');
+              const ps=layer.querySelectorAll('.sfv3-particle');
+              ps.forEach((p,i)=>{const a=(Math.PI*2*i/ps.length)+(Math.random()-.5)*.3,r=70+Math.random()*120,d=420+Math.random()*300;p.style.animation='none';p.offsetHeight;p.style.animation=`sfv3Particle${i} ${d}ms cubic-bezier(.1,.7,.2,1) forwards`;p.style.setProperty('--dx',`${Math.cos(a)*r}px`);p.style.setProperty('--dy',`${Math.sin(a)*r}px`);});
+              game.classList.remove('sfv3-shake'); game.offsetHeight; game.classList.add('sfv3-shake');
+              setTimeout(()=>{layer.className='sfv3-layer';active=false},760);
+            }
+            const st=document.createElement('style'); let rules='';
+            for(let i=0;i<18;i++)rules+=`@keyframes sfv3Particle${i}{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}12%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.1)}}`;
+            st.textContent=rules;document.head.appendChild(st);
+            const fighters=[...document.querySelectorAll('.fighter')];
+            const seen=new WeakMap();
+            function check(f){
+              const cls=f.className||''; const text=(f.innerText||f.textContent||'');
+              const hit=/special/i.test(cls)||/烈焰冲击|疾风连闪/.test(text);
+              if(hit&&!seen.get(f)){seen.set(f,1);const fire=!f.classList.contains('p2');fire(fire?'fire':'wind',fire?'烈焰冲击':'疾风连闪');}
+              if(!hit)seen.set(f,0);
+            }
+            const obs=new MutationObserver(ms=>ms.forEach(m=>{if(m.target.classList?.contains('fighter'))check(m.target); if(m.target.parentElement?.classList?.contains('fighter'))check(m.target.parentElement)}));
+            fighters.forEach(f=>obs.observe(f,{attributes:true,attributeFilter:['class'],subtree:true,childList:true,characterData:true}));
+            setInterval(()=>fighters.forEach(check),120);
+          })();
+          </script>'''
+
+          s=s.replace('</head>',css+'</head>',1)
+          s=s.replace('</body>',js+'</body>',1)
+          p.write_text(s,encoding='utf-8')
+          print('applied special fx v3')
+          PY
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "fx: make special moves visually explosive and color-specific"
+          git push
