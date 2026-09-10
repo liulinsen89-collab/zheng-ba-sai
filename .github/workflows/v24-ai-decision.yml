@@ -1,51 +1,25 @@
 name: V2.4 Utility AI decision system
+
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   upgrade:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Upgrade AI decision logic
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='V2_4_UTILITY_AI'
-          if marker in s:
-              print('V2.4 already applied')
-              raise SystemExit(0)
-          m=re.search(r'function\s+decide\s*\([^)]*\)\s*\{',s)
-          if not m:
-              raise SystemExit('decide function not found')
-          start=m.start(); brace=s.find('{',m.start()); depth=0; end=None
-          for j in range(brace,len(s)):
-              ch=s[j]
-              if ch=='{': depth+=1
-              elif ch=='}':
-                  depth-=1
-                  if depth==0:
-                      end=j+1; break
-          if end is None: raise SystemExit('decide function end not found')
-          new=r'''function utilityScore(f,e,a,q,c,low,enemyLow,incoming){const s=c.style;let v=Math.random()*1.5;if(a==='attack'){v+=q<22?5:1;v+=s==='aggressive'?3:1.5;if(enemyLow)v+=2}if(a==='heavy'){v+=q<18?6:.5;v+=s==='aggressive'?4:1;if(enemyLow)v+=2.5;v-=q>28?4:0}if(a==='lightkick'){v+=q<24?4:1;v+=s==='evasive'?1.5:0}if(a==='kick'){v+=q<30?3:0;v+=enemyLow?3:0}if(a==='guard'){v+=incoming?(s==='aggressive'?3:7):0;v+=low?2:0}if(a==='dodge'){v+=incoming?(s==='evasive'?9:4):0;v+=low?3:0;v+=q<18?2:0}if(a==='jump'){v+=(s==='evasive'&&low)?7:1;v+=incoming?3:0}if(a==='special'){v+=f.en>=100?5:0;v+=enemyLow?7:0;v+=q<20?5:0;v+=s==='aggressive'?3:1}if(s==='evasive'){if(q<13&&a==='dodge')v+=5;if(q>25&&a==='attack')v-=2;if(q>25&&a==='heavy')v-=3;if(low&&(a==='guard'||a==='dodge'))v+=3}else{if(q>c.reach+2&&(a==='attack'||a==='heavy'))v-=3;if(q<c.reach+2&&a==='attack')v+=2;if(low&&a==='special')v+=3}return v}
-function chooseUtility(f,e,actions,q,c,low,enemyLow,incoming){let best=actions[0],score=-1e9;for(const a of actions){const v=utilityScore(f,e,a,q,c,low,enemyLow,incoming);if(v>score){score=v;best=a}}return best}
-function decide(f,e){if(f.action||f.stun>0||f.cool>0||f.hp<=0)return;const q=gap(),c=cfg[f.kind],style=c.style,low=f.hp<240,enemyLow=e.hp<180,incoming=!!e.action&&e.action.t<e.action.max;if(style==='evasive'&&q<12){const a=chooseUtility(f,e,['dodge','guard','attack'],q,c,low,enemyLow,incoming);if(a==='dodge'){f.dodge=.3;f.state='dodge';visual(f,'dodge');f.cool=.42;return}if(a==='guard'){f.guard=.38;f.state='guard';visual(f,'guard');f.cool=.3;return}}if(incoming&&q<27){const a=chooseUtility(f,e,['guard','dodge','attack'],q,c,low,enemyLow,incoming);if(a==='dodge'&&style==='evasive'){f.dodge=.3;f.state='dodge';f.x=Math.max(8,Math.min(92,f.x-f.face*(low?4.2:3.2)));visual(f,'dodge');f.cool=.44;return}if(a==='guard'){f.guard=style==='aggressive'?.24:.42;f.state='guard';visual(f,'guard');f.cool=.3;return}}if(style==='evasive'){if(q<14){f.state='approach';f.x-=f.face*(low?1.15:.92);return}if(q>25){f.state='approach';f.x+=f.face*(low?1.18:1.4);return}}else if(q>c.reach+1){f.state='approach';f.x+=f.face*(low?c.speed*.9:c.speed*1.08);return}if(f.en>=100&&q<c.special[2]){const a=chooseUtility(f,e,['special','attack','heavy'],q,c,low,enemyLow,incoming);if(a==='special'){f.en=0;begin(f,'special',c.special);return}}if(style==='evasive'&&low){const a=chooseUtility(f,e,['dodge','jump','guard','attack'],q,c,low,enemyLow,incoming);if(a==='dodge'){f.dodge=.3;f.state='dodge';visual(f,'dodge');f.cool=.5;return}if(a==='jump'){f.jump=.42;f.state='jump';visual(f,'jump');f.cool=.52;return}}if(f.combo>0&&f.comboT>0){const arr=c.atk,chain=[arr[0],arr[0],arr[1],arr[2],arr[3]],m=chain[Math.min(f.combo,chain.length-1)],type=m===arr[0]?'attack':m===arr[1]?'heavy':m===arr[2]?'lightkick':'kick';if(Math.random()<(style==='aggressive'?.9:.76)){begin(f,type,m);return}}const arr=c.atk;const choices=['attack','heavy','lightkick','kick'];const type=chooseUtility(f,e,choices,q,c,low,enemyLow,incoming);const m=type==='attack'?arr[0]:type==='heavy'?arr[1]:type==='lightkick'?arr[2]:arr[3];begin(f,type,m)}'''
-          s=s[:start]+new+s[end:]
-          s=s.replace('</main>','<!-- V2_4_UTILITY_AI -->\n</main>',1)
-          p.write_text(s,encoding='utf-8')
-          PY
-      - name: Commit V2.4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Apply V2.4
+        run: python3 tools/v24_patch.py
+      - name: Commit V2.4 source
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "feat: upgrade to V2.4 utility AI decisions"
-          git push
+          git diff --cached --quiet || git commit -m "feat: upgrade to V2.4 utility AI decisions"
+          git push || true
