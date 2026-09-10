@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Apply V2.1 battle balance and guaranteed specials
+      - name: Apply V2.2 battle balance
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -33,25 +33,15 @@ jobs:
           s=p.read_text(encoding='utf-8')
           patch=r'''
           (function(){
-            const HP_MAX=300;
-            const DAMAGE_SCALE=.42;
-            const SPECIAL_ENERGY=60;
+            const HP_MAX=600;
+            const DAMAGE_SCALE=.50;
             A.maxHp=HP_MAX; B.maxHp=HP_MAX; A.hp=HP_MAX; B.hp=HP_MAX;
-            function rebalance(f){
-              if(f.action && typeof f.action.d==='number') f.action.d=Math.max(1,Math.round(f.action.d*DAMAGE_SCALE));
-              if(f.energy>=SPECIAL_ENERGY && (!f.action || f.action.type!=='special')) begin(f,'special');
-            }
             const oldReset=resetF;
             resetF=function(f,x){oldReset(f,x);f.maxHp=HP_MAX;f.hp=HP_MAX;f.energy=0};
             const oldStrike=strike;
             strike=function(f,e){
               if(f.action && typeof f.action.d==='number') f.action.d=Math.max(1,Math.round(f.action.d*DAMAGE_SCALE));
               return oldStrike(f,e);
-            };
-            const oldUpdate=update;
-            update=function(f,e){
-              oldUpdate(f,e);
-              if(f.energy>=SPECIAL_ENERGY && (!f.action || f.action.type!=='special')) begin(f,'special');
             };
             const oldRender=render;
             render=function(){
