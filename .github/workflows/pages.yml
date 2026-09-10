@@ -33,4 +33,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# Force Pages to rebuild from the latest source commit after the arena background fix.
+# Rebuild Pages from the CSS-only arena background source.
