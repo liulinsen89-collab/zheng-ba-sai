@@ -23,6 +23,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Inject V3.2 combat arbiter
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          patch=Path('tools/v32-runtime.html').read_text(encoding='utf-8')
+          marker='__v32'
+          if marker not in s:
+              s=s.replace('</body>', patch+'</body>') if '</body>' in s else s+patch
+              p.write_text(s,encoding='utf-8')
+          PY
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
@@ -33,4 +45,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# V3.1 AI core deployment trigger
+# V3.2 combat loop deployment
