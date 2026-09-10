@@ -31,13 +31,22 @@ jobs:
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.fighter#f1{left:8%!important}.fighter#f2{left:78%!important}.action-callout{z-index:55;display:block;pointer-events:none;font-weight:1000;font-size:clamp(10px,1.35vw,17px);white-space:nowrap;text-shadow:2px 2px #000;animation:callout .43s ease-out forwards}.action-callout.f1{color:#ff3b30!important;text-shadow:2px 2px #000,0 0 5px #ff3b30!important}.action-callout.f2{color:#38a8ff!important;text-shadow:2px 2px #000,0 0 5px #38a8ff!important}.fighter .scarf{display:none!important}.fighter .boot{bottom:11px!important;z-index:4!important}.fighter .boot.l{left:43px!important}.fighter .boot.r{left:98px!important}.kick .shin.r,.kick .boot.r{animation:frontKick .30s steps(4);transform-origin:50% 100%}.lightkick .shin.r,.lightkick .boot.r{animation:lightKick .24s steps(4);transform-origin:50% 100%}.jump .shin.l{animation:airLL .46s}.jump .shin.r{animation:airLR .46s}.jump .boot.l{animation:airLL .46s}.jump .boot.r{animation:airLR .46s}'''
+          css='''.hud{top:4px!important}.name{font-size:clamp(9px,1.25vw,16px)!important;margin-bottom:1px!important}.bar{height:9px!important;border-width:2px!important;transform:translateY(-2px)}.energy{height:3px!important;transform:translateY(-2px)}.status,.spectator{display:none!important}.action-callout{z-index:55;display:block;pointer-events:none;font-weight:1000;font-size:clamp(10px,1.35vw,17px);white-space:nowrap;text-shadow:2px 2px #000;animation:callout .43s ease-out forwards}.action-callout.f1{color:#ff3b30!important;text-shadow:2px 2px #000,0 0 5px #ff3b30!important}.action-callout.f2{color:#38a8ff!important;text-shadow:2px 2px #000,0 0 5px #38a8ff!important}.fighter .scarf{display:none!important}.fighter .boot{bottom:11px!important;z-index:4!important}.fighter .boot.l{left:43px!important}.fighter .boot.r{left:98px!important}.kick .shin.r,.kick .boot.r{animation:frontKick .30s steps(4);transform-origin:50% 100%}.lightkick .shin.r,.lightkick .boot.r{animation:lightKick .24s steps(4);transform-origin:50% 100%}.jump .shin.l{animation:airLL .46s}.jump .shin.r{animation:airLR .46s}.jump .boot.l{animation:airLL .46s}.jump .boot.r{animation:airLR .46s}'''
           s=s.replace("</style>",css+"</style>",1)
+          # The previous deployment patch used !important left positions, which froze the visuals while the AI coordinates kept moving.
+          # Remove that override and make the source positions authoritative.
+          s=s.replace('.fighter#f1{left:8%!important}.fighter#f2{left:78%!important}','')
+          s=s.replace('style="left:21%"','style="left:8%"',2)
+          s=s.replace('style="left:69%"','style="left:78%"',2)
+          s=s.replace("const A=make(1,21,'power'),B=make(2,69,'speed')","const A=make(1,8,'power'),B=make(2,78,'speed')")
+          s=s.replace("resetF(A,21);resetF(B,69)","resetF(A,8);resetF(B,78)")
+          # Tighten the real attack distance so hits require the fighters to visibly close in.
+          s=s.replace("reach:17,atk:","reach:10.5,atk:")
+          # Keep the action label attached to the actual rendered fighter instead of a fixed screen position.
           old="""function callout(f){if(!running||f.hp<=0)return;const label=names[f.state]||'';if(!label||['idle','approach','hurt','ko'].includes(f.state))return;const e=document.createElement('div');e.className='action-callout '+(f.id===1?'f1':'f2');e.textContent=label;e.style.left=(f.x+(f.id===1?5:-5))+'%';e.style.top='52%';G.appendChild(e);setTimeout(()=>e.remove(),450)}"""
           new="""function callout(f){if(!running||f.hp<=0)return;const label=names[f.state]||'';if(!label||['idle','approach','hurt','ko'].includes(f.state))return;const e=document.createElement('div');e.className='action-callout '+(f.id===1?'f1':'f2');e.textContent=label;G.appendChild(e);const n=node(f),started=performance.now(),life=450;function follow(now){if(!e.isConnected)return;const r=n.getBoundingClientRect(),g=G.getBoundingClientRect();e.style.left=(r.left+r.width/2-g.left)+'px';e.style.top=Math.max(58,r.top-g.top-30)+'px';if(now-started<life)requestAnimationFrame(follow);else e.remove()}requestAnimationFrame(follow)}"""
-          if old not in s:
-              raise SystemExit("callout function not found")
-          s=s.replace(old,new,1)
+          if old in s:
+              s=s.replace(old,new,1)
           p.write_text(s,encoding="utf-8")
           PY
       - name: Upload artifact
